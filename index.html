@@ -1,0 +1,1432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Watermarking Tool</title>
+    <!-- Include piexifjs library for EXIF manipulation -->
+    <script src="https://cdn.jsdelivr.net/npm/piexifjs"></script>
+    <!-- Include jsmediatags for reading ID3 tags -->
+    <script src="https://cdn.jsdelivr.net/npm/jsmediatags@latest/dist/jsmediatags.min.js"></script>
+    <!-- Include browser-id3-writer for writing ID3 tags -->
+    <script src="https://cdn.jsdelivr.net/npm/browser-id3-writer@4.0.0/dist/browser-id3-writer.min.js"></script>
+<style>
+    /* Set the background color of the body */
+    body {
+        background-color: #0d1a2b; /* Dark blue, almost black */
+        margin: 40px; /* Add margin around the page */
+        color: white; /* Ensure text is readable on dark background */
+        font-family: Arial, sans-serif;
+    }
+
+    /* Hide sections by default */
+    .section {
+        display: none;
+    }
+
+    /* Center the logo */
+    #logo {
+        display: block;
+        margin: 0 auto;
+        width: 800px; /* Set the image width to 800 pixels */
+        max-width: 70%; /* Ensure the image does not exceed the container width */
+    }
+
+    /* Button styles */
+    .nav-buttons {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 20px;
+    }
+
+    /* Default button styling */
+    .nav-buttons button {
+        margin: 0 10px;
+        padding: 10px 20px;
+        font-size: 16px;
+        background-color: red; /* Default button color */
+        color: white;
+        border: none;
+        cursor: pointer;
+        transition: background-color 0.3s ease; /* Smooth transition for hover and active states */
+        border-radius: 5px; /* Rounded button edges */
+        font-family: 'Arial', sans-serif;
+    }
+
+    /* Hover effect */
+    .nav-buttons button:hover {
+        background-color: blue; /* Change to blue when hovered */
+    }
+
+    /* Active section button */
+    .nav-buttons button.active {
+        background-color: green; /* Change to green when active */
+    }
+
+    /* Title header */
+    h1 {
+        text-align: center;
+        color: white; /* Set title color to white */
+    }
+
+    /* Content sections */
+    .section {
+        background-color: #1b2a3c; /* Darker background for sections */
+        padding: 20px;
+        border-radius: 10px;
+    }
+
+    /* Style the preformatted text outputs */
+    pre {
+        background-color: #2a3e55;
+        color: #e6e6e6;
+        padding: 10px;
+        border-radius: 5px;
+        overflow-x: auto;
+    }
+
+/* Style for all links */
+a {
+    color: darkgray; /* Dark gray color for links */
+    font-size: 18px; /* Increase font size */
+    text-decoration: underline; /* Always underline the links */
+    font-weight: bold; /* Make links a bit bolder for visibility */
+}
+
+/* Optional: Change link color on hover */
+a:hover {
+    color: lightgray; /* Slightly lighter gray on hover */
+}
+
+</style>
+
+
+
+
+    <script>
+
+
+
+// Function to retrieve CertTXID based on CertID
+async function get_cert_txid(cert_id) {
+    try {
+        const response = await fetch(`/get_cert_txid/${cert_id}`);
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(`Error fetching CertTXID: ${errorData.detail}`);
+        }
+        const data = await response.json();
+        return data.cert_txid;
+    } catch (error) {
+        console.error("Error in get_cert_txid:", error);
+        alert("Failed to retrieve CertTXID: " + error.message);
+        return null;
+    }
+}
+
+
+        let privateKey = null;
+        let certId = null;
+let certTxid = null; // New variable to store the certificate's txid
+
+        const STATIC_MESSAGE = "Test message for signing"; // Static message to be signed
+
+        // Function to show or hide sections based on button clicks
+function showSection(sectionId) {
+    // Hide all sections
+    const sections = document.querySelectorAll('.section');
+    sections.forEach(section => {
+        section.style.display = 'none';
+    });
+
+    // Hide the logo by default
+    document.getElementById('logo').style.display = 'none';
+
+    // If no sectionId (null), show the Home (logo) section
+    if (sectionId === null) {
+        document.getElementById('logo').style.display = 'block';
+    } else if (sectionId) {
+        // Show the requested section
+        document.getElementById(sectionId).style.display = 'block';
+    }
+
+    // Remove active class from all buttons
+    const buttons = document.querySelectorAll('.nav-buttons button');
+    buttons.forEach(button => button.classList.remove('active'));
+
+    // Add active class to the button corresponding to the visible section
+    if (sectionId === null) {
+        const homeButton = document.querySelector('.nav-buttons button[data-section="null"]');
+        if (homeButton) {
+            homeButton.classList.add('active');
+        }
+    } else if (sectionId) {
+        const activeButton = document.querySelector(`.nav-buttons button[data-section="${sectionId}"]`);
+        if (activeButton) {
+            activeButton.classList.add('active');
+        }
+    }
+}
+
+
+        // Function to create a new certificate by providing the username
+        async function generateCert() {
+            const username = document.getElementById('username').value.trim();
+            if (!username) {
+                alert('Please enter a username');
+                return;
+            }
+
+            try {
+                // Send the username to the server and get the cert_id
+                const response = await fetch('/create_cert', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: username })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`Error: ${errorData.detail}`);
+                }
+
+                const result = await response.json();
+                certId = result.cert_id;
+                document.getElementById('cert_output').innerText = `Certificate generated with cert_id: ${certId}`;
+                generateKeyPair();  // Generate the key pair after cert is created
+            } catch (error) {
+                console.error("Error creating certificate:", error);
+                alert("Failed to create certificate: " + error.message);
+            }
+        }
+
+         async function generateKeyPair() {
+        try {
+            const keyPair = await window.crypto.subtle.generateKey(
+                {
+                    name: "ECDSA",
+                    namedCurve: "P-256",
+                },
+                true,
+                ["sign", "verify"]
+            );
+
+            privateKey = keyPair.privateKey;
+
+            // Export the private key (for the user to store securely)
+            const privateKeyExported = await window.crypto.subtle.exportKey(
+                "pkcs8",
+                privateKey
+            );
+            const privateKeyPem = convertArrayBufferToPem(privateKeyExported, "PRIVATE KEY");
+
+            // Export the public key (for registering on the server)
+            const publicKeyExported = await window.crypto.subtle.exportKey(
+                "spki",
+                keyPair.publicKey
+            );
+            const publicKeyPem = convertArrayBufferToPem(publicKeyExported, "PUBLIC KEY");
+
+            const currentTimeUTC = new Date().toISOString() + " UTC";
+
+            // Retrieve the username from the input field
+            const username = document.getElementById('username').value.trim();
+
+            // Send the public key to the server for registration
+            const registerResponse = await fetch('/register_public_key', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ cert_id: certId, public_key: publicKeyPem })
+            });
+
+            if (!registerResponse.ok) {
+                const errorData = await registerResponse.json();
+                throw new Error(`Error registering public key: ${errorData.detail}`);
+            }
+
+            const registerResult = await registerResponse.json();
+            const txid = registerResult.txid;
+
+            // Successfully registered public key and created OP_RETURN transaction
+            document.getElementById('cert_output').innerText += `\nPublic key registered successfully. Transaction ID: ${txid}`;
+            document.getElementById('cert_output').innerText += `\nPublic Key:\n${publicKeyPem}`;
+            document.getElementById('private_key_output').innerText = `Private Key:\n${privateKeyPem}`;
+
+            // Add the download button for the keys
+            const downloadButton = document.createElement('button');
+            downloadButton.innerText = 'Download Keys';
+            downloadButton.onclick = function () {
+                // Prepare the content with txid first, formatted as "txid: xxxxxxx"
+                const keysContent = `txid: ${txid}\nCertID: ${certId}\nUsername: ${username}\nGenerated At: ${currentTimeUTC}\n\nPublic Key:\n${publicKeyPem}\n\nPrivate Key:\n${privateKeyPem}`;
+                const blob = new Blob([keysContent], { type: 'text/plain' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${username}_${certId}.txt`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a); // Clean up
+            };
+
+            document.getElementById('private_key_output').appendChild(document.createElement('br'));
+            document.getElementById('private_key_output').appendChild(downloadButton);
+
+
+// Create the block explorer link
+            const blockExplorerLink = document.createElement('a');
+            blockExplorerLink.href = `http://rpc.nanocheeze.com/tx/${txid}`; // Replace with your actual block explorer URL if different
+            blockExplorerLink.target = '_blank'; // Opens the link in a new tab
+            blockExplorerLink.innerText = 'View Transaction on Block Explorer';
+            blockExplorerLink.style.display = 'block'; // Ensures the link appears on a new line
+            blockExplorerLink.style.marginTop = '10px'; // Adds some spacing above the link
+
+
+document.getElementById('private_key_output').appendChild(blockExplorerLink);
+
+
+        } catch (error) {
+            console.error("Error generating or registering key pair:", error);
+            alert("Failed to generate or register key pair: " + error.message);
+        }
+    }
+
+        // Function to convert ArrayBuffer to PEM format
+        function convertArrayBufferToPem(arrayBuffer, label) {
+            const binary = String.fromCharCode.apply(null, new Uint8Array(arrayBuffer));
+            const base64 = window.btoa(binary);
+            const formattedBase64 = base64.match(/.{1,64}/g).join('\n');
+            return `-----BEGIN ${label}-----\n${formattedBase64}\n-----END ${label}-----`;
+        }
+
+        // Function to import the private key from PEM format
+        async function importPrivateKey(pemKey) {
+            const pemHeader = "-----BEGIN PRIVATE KEY-----";
+            const pemFooter = "-----END PRIVATE KEY-----";
+            const pemContents = pemKey.replace(pemHeader, "").replace(pemFooter, "").replace(/\n/g, "").replace(/\r/g, "");
+            const binaryDer = window.atob(pemContents);
+            const binaryDerArray = new Uint8Array([...binaryDer].map(char => char.charCodeAt(0)));
+
+            return await window.crypto.subtle.importKey(
+                "pkcs8",
+                binaryDerArray.buffer,
+                {
+                    name: "ECDSA",
+                    namedCurve: "P-256"
+                },
+                true,
+                ["sign"]
+            );
+        }
+
+        // Function to sign a static message with the user's private key
+        async function signMessageWithPrivateKey() {
+            const privateKeyPem = document.getElementById('private_key_input').value.trim();
+            const certIdInput = document.getElementById('cert_id_input').value.trim();
+console.log(privateKeyPem);
+console.log(certIdInput);
+
+            if (!privateKeyPem || !certIdInput) {
+                alert('Please enter your cert ID and private key');
+                return;
+            }
+
+            try {
+                const privateKey = await importPrivateKey(privateKeyPem);
+                const encoder = new TextEncoder();
+                const data = encoder.encode(STATIC_MESSAGE);
+
+                // Sign the static message
+                const rawSignature = await window.crypto.subtle.sign(
+                    {
+                        name: "ECDSA",
+                        hash: { name: "SHA-256" },
+                    },
+                    privateKey,
+                    data
+                );
+
+                // Convert raw signature to DER format
+                const derSignature = convertRawSignatureToDER(rawSignature);
+
+                const signatureHex = Array.from(new Uint8Array(derSignature))
+                    .map((b) => b.toString(16).padStart(2, '0'))
+                    .join('');
+
+                document.getElementById('signature_output').innerText = `Signature: ${signatureHex}`;
+
+                // Send the signature and cert ID to the server for verification
+                const verifyResponse = await fetch('/verify_signature', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        cert_id: certIdInput,
+                        signature: signatureHex,
+                    }),
+                });
+console.log(verifyResponse);
+                const verifyResult = await verifyResponse.json();
+                if (verifyResponse.ok) {
+                    document.getElementById('verification_output').innerText = 'Signature verified successfully!';
+                } else {
+                    document.getElementById('verification_output').innerText = `Verification failed: ${verifyResult.detail}`;
+                }
+            } catch (error) {
+                console.error('Error signing the message or verifying signature:', error);
+                alert('Error: ' + error.message);
+            }
+        }
+
+        // Function to convert raw ECDSA signature to DER format
+        function convertRawSignatureToDER(rawSignature) {
+            const signature = new Uint8Array(rawSignature);
+            const r = signature.slice(0, signature.length / 2);
+            const s = signature.slice(signature.length / 2);
+
+            // Remove leading zeros
+            const rStripped = removeLeadingZeros(r);
+            const sStripped = removeLeadingZeros(s);
+
+            // Construct DER encoding
+            const rEncoded = encodeInteger(rStripped);
+            const sEncoded = encodeInteger(sStripped);
+
+            const totalLength = rEncoded.length + sEncoded.length;
+            const derSignature = new Uint8Array(2 + totalLength);
+            derSignature[0] = 0x30; // SEQUENCE tag
+            derSignature[1] = totalLength;
+            derSignature.set(rEncoded, 2);
+            derSignature.set(sEncoded, 2 + rEncoded.length);
+
+            return derSignature;
+        }
+
+        function removeLeadingZeros(arr) {
+            let i = 0;
+            while (i < arr.length - 1 && arr[i] === 0) {
+                i++;
+            }
+            return arr.slice(i);
+        }
+
+        function encodeInteger(arr) {
+            const needPadding = arr[0] & 0x80;
+            const length = arr.length + (needPadding ? 1 : 0);
+            const encoded = new Uint8Array(2 + length);
+            encoded[0] = 0x02; // INTEGER tag
+            encoded[1] = length;
+            let offset = 2;
+            if (needPadding) {
+                encoded[offset++] = 0x00;
+            }
+            encoded.set(arr, offset);
+            return encoded;
+        }
+
+        // Function to sign an image or MP3 file
+      // Function to sign an image or MP3 file
+async function signFile() {
+    const privateKeyPem = document.getElementById('file_private_key_input').value.trim();
+    const certIdInput = document.getElementById('file_cert_id_input').value.trim();
+    const fileInput = document.getElementById('file_input');
+    const file = fileInput.files[0];
+
+    if (!privateKeyPem || !certIdInput || !file) {
+        alert('Please enter your cert ID, private key, and select a file');
+        return;
+    }
+
+    const fileType = file.type; // Determine the file type
+
+    try {
+        const privateKey = await importPrivateKey(privateKeyPem);
+
+        // Read the file and compute its SHA-256 hash
+        const fileArrayBuffer = await file.arrayBuffer();
+        const hashBuffer = await crypto.subtle.digest('SHA-256', fileArrayBuffer);
+        const fileHashHex = Array.from(new Uint8Array(hashBuffer))
+            .map(b => b.toString(16).padStart(2, '0'))
+            .join('');
+
+        // Store the original file hash in a variable accessible to other functions
+        const originalFileHashHex = fileHashHex;
+
+        // Sign the file hash
+        const rawSignature = await window.crypto.subtle.sign(
+            {
+                name: 'ECDSA',
+                hash: { name: 'SHA-256' },
+            },
+            privateKey,
+            hashBuffer
+        );
+
+        // Convert raw signature to DER format
+        const derSignature = convertRawSignatureToDER(rawSignature);
+
+        const signatureHex = Array.from(new Uint8Array(derSignature))
+            .map(b => b.toString(16).padStart(2, '0'))
+            .join('');
+
+        document.getElementById('file_signature_output').innerText = `Signature: ${signatureHex}`;
+
+        // Prepare data to send to the server for verification
+        const requestData = {
+            cert_id: certIdInput,
+            signature: signatureHex,
+            file_hash: fileHashHex,
+            original_file_size: file.size,
+            file_name: file.name
+        };
+
+        // Send verification request to the server
+        const verifyResponse = await fetch('/verify_watermark', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestData),
+        });
+
+        const verifyResult = await verifyResponse.json();
+
+        if (verifyResponse.ok) {
+            document.getElementById('file_verification_output').innerText = 'File signature verified successfully!';
+
+            // Now, call finalize_watermark to get txid
+            const finalizeData = {
+                cert_id: certIdInput,
+                final_file_hash: fileHashHex, // Ensure this matches the final file hash after embedding
+                final_file_size: file.size,
+                original_file_hash: originalFileHashHex
+            };
+console.log(finalizeData);
+            const finalizeResponse = await fetch('/finalize_watermark', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(finalizeData),
+            });
+
+            const finalizeResult = await finalizeResponse.json();
+
+            if (!finalizeResponse.ok) {
+                alert(`Failed to finalize watermark: ${finalizeResult.detail}`);
+                return;
+            }
+
+            const txid = finalizeResult.txid;
+            console.log("Received txid:", txid);
+console.log("verify username:", verifyResult.username);
+            // Now embed watermark with txid
+            if (fileType.startsWith('image/')) {
+                await embedWatermarkIntoFile(file, verifyResult.watermark, certIdInput, originalFileHashHex, txid);
+            } else if (fileType === 'audio/mpeg' || fileType === 'audio/mp3') {
+
+            // Fetch username associated with certId
+            const usernameResponse = await fetch(`/get_username/${certIdInput}`);
+            const usernameResult = await usernameResponse.json();
+            let username = '';
+            if (usernameResponse.ok) {
+                username = usernameResult.username;
+            } else {
+                alert('Failed to retrieve username');
+                return;
+            }
+
+                await embedWatermarkIntoMp3(file, verifyResult.watermark, certIdInput, username, originalFileHashHex, txid);
+            }
+        } else {
+            document.getElementById('file_verification_output').innerText = `Verification failed: ${verifyResult.detail}`;
+        }
+    } catch (error) {
+        console.error('Error signing the file or verifying signature:', error);
+        alert('Error: ' + error.message);
+    }
+}
+
+
+
+        // Function to handle images and embed watermark in metadata
+async function handleImageFile(file, requestData, certIdInput, originalFileHashHex) {
+    try {
+        // Send data to the server for verification and watermarking
+        const verifyResponse = await fetch('/verify_watermark', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestData),
+        });
+
+        const verifyResult = await verifyResponse.json();
+        if (verifyResponse.ok) {
+            document.getElementById('file_verification_output').innerText = 'File signature verified successfully!';
+            // Embed the watermark into the image file's metadata
+            await embedWatermarkIntoFile(file, verifyResult.watermark, certIdInput, originalFileHashHex);
+        } else {
+            document.getElementById('file_verification_output').innerText = `Verification failed: ${verifyResult.detail}`;
+        }
+    } catch (error) {
+        console.error('Error processing image file:', error);
+        alert('Error processing image file: ' + error.message);
+    }
+}
+
+
+        // Function to embed watermark into image file's metadata using piexifjs
+     async function embedWatermarkIntoFile(file, watermark, certId, originalFileHashHex, txid) {
+    try {
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+            const originalDataURL = e.target.result;
+            let strippedDataURL = piexif.remove(originalDataURL);
+
+            // Fetch username associated with certId
+            const usernameResponse = await fetch(`/get_username/${certId}`);
+            const usernameResult = await usernameResponse.json();
+            let username = '';
+            if (usernameResponse.ok) {
+                username = usernameResult.username;
+            } else {
+                alert('Failed to retrieve username');
+                return;
+            }
+
+            // Embed new EXIF metadata with the watermark, username, and txid
+            const zeroth = {};
+            zeroth[piexif.ImageIFD.Artist] = username;  // Store username in the 'Artist' field
+            zeroth[piexif.ImageIFD.ImageDescription] = `${watermark}, txid: ${txid}`;  // Add watermark and txid
+
+            const exifObj = { "0th": zeroth };
+            const exifBytes = piexif.dump(exifObj);
+            const newDataURL = piexif.insert(exifBytes, strippedDataURL);
+
+            // Convert Data URL to Blob
+            const newBlob = dataURLtoBlob(newDataURL);
+
+
+            // Compute hash and size of the updated image
+            const newArrayBuffer = await newBlob.arrayBuffer();
+            const newHashBuffer = await crypto.subtle.digest('SHA-256', newArrayBuffer);
+            const newFileHashHex = Array.from(new Uint8Array(newHashBuffer))
+                .map(b => b.toString(16).padStart(2, '0'))
+                .join('');
+            const newFileSize = newBlob.size;
+console.log(txid);
+            // Send the final hash, size, and txid to the server for record keeping
+            const finalizeData = {
+                cert_id: certId,
+                final_file_hash: newFileHashHex,
+                final_file_size: newFileSize,
+                original_file_hash: originalFileHashHex,
+                txid: txid
+            };
+
+            const finalizeResponse = await fetch('/finalize_watermark', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(finalizeData),
+            });
+
+            if (!finalizeResponse.ok) {
+                const errorData = await finalizeResponse.json();
+                alert(`Failed to finalize watermark: ${errorData.detail}`);
+                return;
+            }
+            const finalizeResult = await finalizeResponse.json();  // Retrieve both txid and final_op_txid
+
+            // Create a download link for the updated image
+            const downloadLink = document.createElement('a');
+            downloadLink.href = URL.createObjectURL(newBlob);
+            downloadLink.download = `watermarked_${file.name}`;
+downloadLink.innerText = `Download Watermarked Image (${newFileSize} bytes)`;
+
+            document.getElementById('watermark_output').innerHTML = '';
+            document.getElementById('watermark_output').appendChild(downloadLink);
+document.getElementById('watermark_output').appendChild(document.createElement('br'));
+
+            // Create links for txid and final_op_txid
+            const txidLink = document.createElement('a');
+            txidLink.href = `http://rpc.nanocheeze.com/tx/${finalizeResult.txid}`;
+            txidLink.target = '_blank';
+            txidLink.innerText = `View Unsigned File Transaction (txid) on the NCZ Block Explorer`;
+
+            const finalOpTxidLink = document.createElement('a');
+            finalOpTxidLink.href = `http://rpc.nanocheeze.com/tx/${finalizeResult.final_op_txid}`;
+            finalOpTxidLink.target = '_blank';
+            finalOpTxidLink.innerText = `View Signed File Transaction (txid) on the NCZ Block Explorer`;
+
+            document.getElementById('watermark_output').appendChild(document.createElement('br'));
+            document.getElementById('watermark_output').appendChild(txidLink);
+            document.getElementById('watermark_output').appendChild(document.createElement('br'));
+            document.getElementById('watermark_output').appendChild(finalOpTxidLink);
+        document.getElementById('watermark_output').appendChild(document.createElement('br'));
+
+// Create the .txt file with metadata and final_op_txid for download
+        const originalFileSize = file.size; // Get the original file size before watermarking
+
+const metadataContent = `
+${watermark}
+
+Creator: ${username}
+
+Unsigned File txID: ${finalizeResult.txid}
+Unsigned File Hash: ${originalFileHashHex}
+Unsigned File Size: ${originalFileSize} bytes
+
+Signed File txID: ${finalizeResult.final_op_txid}
+Signed File Hash: ${finalizeResult.final_file_hash}
+Signed File Size: ${newFileSize} bytes
+`;
+
+
+// Convert the metadata content to a Blob
+const metadataBlob = new Blob([metadataContent], { type: 'text/plain' });
+const metadataUrl = URL.createObjectURL(metadataBlob);
+
+// Create a download link for the metadata .txt file
+const metadataDownloadLink = document.createElement('a');
+metadataDownloadLink.href = metadataUrl;
+metadataDownloadLink.download = `metadata_${file.name}.txt`;
+metadataDownloadLink.innerText = `Download File Metadata (${metadataBlob.size} bytes)`;
+
+// Append the metadata download link to the output
+document.getElementById('watermark_output').appendChild(document.createElement('br'));
+document.getElementById('watermark_output').appendChild(metadataDownloadLink);
+document.getElementById('watermark_output').appendChild(document.createElement('br'));
+document.getElementById('watermark_output').appendChild(document.createElement('br'));
+document.getElementById('watermark_output').appendChild(document.createElement('hr'));
+document.getElementById('watermark_output').appendChild(document.createElement('br'));
+// Create and append a descriptive div before the textarea
+const descriptionDiv = document.createElement('div');
+descriptionDiv.innerText = 'File Meta Data (Use to Verify Unsigned File)';
+document.getElementById('watermark_output').appendChild(descriptionDiv);
+
+            // Display the contents of the metadata in a textarea
+            const readerForBlob = new FileReader();
+            readerForBlob.onload = function(event) {
+                const textArea = document.createElement('textarea');
+                textArea.value = event.target.result;
+                textArea.rows = 10;
+                textArea.cols = 150;
+                document.getElementById('watermark_output').appendChild(document.createElement('br'));
+                document.getElementById('watermark_output').appendChild(textArea);
+            };
+            readerForBlob.readAsText(metadataBlob);  // Read the Blob as text and display
+        };
+        reader.readAsDataURL(file);
+    } catch (error) {
+        console.error('Error embedding watermark into file:', error);
+        alert('Error embedding watermark into file: ' + error.message);
+    }
+}
+
+
+
+        // Helper function to convert Data URL to Blob
+        function dataURLtoBlob(dataurl) {
+            const arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
+                bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+            for (let i = 0; i < n; i++) {
+                u8arr[i] = bstr.charCodeAt(i);
+            }
+            return new Blob([u8arr], { type: mime });
+        }
+
+        // Function to handle MP3 files and add a watermark in the ID3 tag
+       async function handleMp3File(file, requestData, certIdInput, originalFileHashHex) {
+    try {
+        // Send data to the server for verification and watermarking
+        const verifyResponse = await fetch('/verify_watermark', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestData),
+        });
+
+        const verifyResult = await verifyResponse.json();
+        if (verifyResponse.ok) {
+            document.getElementById('file_verification_output').innerText = 'MP3 signature verified successfully!';
+
+            const usernameResponse = await fetch(`/get_username/${certIdInput}`);
+            const usernameResult = await usernameResponse.json();
+            let username = '';
+            if (usernameResponse.ok) {
+                username = usernameResult.username;
+
+            } else {
+                alert('Failed to retrieve username');
+                return;
+            }
+console.log('user in handle mp3: '+username);
+
+
+            // Add watermark to MP3 metadata
+            embedWatermarkIntoMp3(file, verifyResult.watermark, certIdInput, username, originalFileHashHex);
+        } else {
+            document.getElementById('file_verification_output').innerText = `Verification failed: ${verifyResult.detail}`;
+        }
+    } catch (error) {
+        console.error('Error processing MP3 file:', error);
+        alert('Error processing MP3 file: ' + error.message);
+    }
+}
+
+
+        // Function to embed watermark into MP3 ID3 tag
+     async function embedWatermarkIntoMp3(file, signedHash, certId, username, originalFileHashHex, txid) {
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+        const mp3Data = e.target.result;
+
+        // Create a new ID3Writer instance with the MP3 data
+        const writer = new ID3Writer(mp3Data);
+
+        // Use the signed hash directly as the watermark
+        const watermarkString = signedHash + `, txid: ${txid}`;
+
+        // Log the watermark string to verify correctness
+        console.log("Watermark String to be written:", watermarkString);
+
+        // Remove any previous ID3 tag to avoid duplication
+        writer.removeTag();
+
+        // Set the 'COMM' frame with the watermark (only the signedHash)
+        writer.setFrame('COMM', {
+            description: 'Watermark',
+            text: watermarkString
+        });
+
+        // Set the 'TPE1' frame (Artist)
+        console.log("username String to be written:", username);
+        writer.setFrame('TPE1', [username]);
+
+        // Apply all the new metadata tags to the MP3
+        writer.addTag();
+
+        // Get the updated MP3 as a Blob
+        const signedMp3Blob = writer.getBlob();
+        const url = URL.createObjectURL(signedMp3Blob);
+
+        // Compute hash and size of the updated MP3 file
+        const newArrayBuffer = await signedMp3Blob.arrayBuffer();
+        const newHashBuffer = await crypto.subtle.digest('SHA-256', newArrayBuffer);
+        const newFileHashHex = Array.from(new Uint8Array(newHashBuffer))
+            .map(b => b.toString(16).padStart(2, '0'))
+            .join('');
+        const newFileSize = signedMp3Blob.size;
+
+        // Send the final file hash, size, and txid to the server for record keeping
+        const finalizeData = {
+            cert_id: certId,
+            final_file_hash: newFileHashHex,
+            final_file_size: newFileSize,
+            original_file_hash: originalFileHashHex,
+            txid: txid
+        };
+
+        const finalizeResponse = await fetch('/finalize_watermark', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(finalizeData),
+        });
+
+        if (!finalizeResponse.ok) {
+            const errorData = await finalizeResponse.json();
+            alert(`Failed to finalize watermark: ${errorData.detail}`);
+            return;
+        }
+
+        const finalizeResult = await finalizeResponse.json();  // Retrieve both txid and final_op_txid
+
+        // Create a download link for the watermarked MP3
+        const downloadLink = document.createElement('a');
+        downloadLink.href = url;
+        downloadLink.download = `watermarked_${file.name}`;
+downloadLink.innerText = `Download Watermarked MP3 (${newFileSize} bytes)`;
+        document.getElementById('watermark_output').innerHTML = '';
+        document.getElementById('watermark_output').appendChild(downloadLink);
+        document.getElementById('watermark_output').appendChild(document.createElement('br'));
+
+
+        // Create links for txid and final_op_txid
+        const txidLink = document.createElement('a');
+        txidLink.href = `http://rpc.nanocheeze.com/tx/${finalizeResult.txid}`;
+        txidLink.target = '_blank';
+        txidLink.innerText = `View Unsigned File Transaction (txid) on the NCZ Block Explorer`;
+
+        const finalOpTxidLink = document.createElement('a');
+        finalOpTxidLink.href = `http://rpc.nanocheeze.com/tx/${finalizeResult.final_op_txid}`;
+        finalOpTxidLink.target = '_blank';
+        finalOpTxidLink.innerText = `View Signed File Transaction (txid) on the NCZ Block Explorer`;
+
+        document.getElementById('watermark_output').appendChild(document.createElement('br'));
+        document.getElementById('watermark_output').appendChild(txidLink);
+        document.getElementById('watermark_output').appendChild(document.createElement('br'));
+        document.getElementById('watermark_output').appendChild(finalOpTxidLink);
+        document.getElementById('watermark_output').appendChild(document.createElement('br'));
+
+        // Create the .txt file with metadata and final_op_txid for download
+        const originalFileSize = file.size; // Get the original file size before watermarking
+
+        const metadataContent = `
+${watermarkString}
+
+Creator: ${username}
+
+Unsigned File txID: ${finalizeResult.txid}
+Unsigned File Hash: ${originalFileHashHex}
+Unsigned File Size: ${originalFileSize} bytes
+
+Signed File txID: ${finalizeResult.final_op_txid}
+Signed File Hash: ${newFileHashHex}
+Signed File Size: ${newFileSize} bytes
+        `;
+
+        // Convert the metadata content to a Blob
+        const metadataBlob = new Blob([metadataContent], { type: 'text/plain' });
+        const metadataUrl = URL.createObjectURL(metadataBlob);
+
+        // Create a download link for the metadata .txt file
+        const metadataDownloadLink = document.createElement('a');
+        metadataDownloadLink.href = metadataUrl;
+        metadataDownloadLink.download = `metadata_${file.name}.txt`;
+metadataDownloadLink.innerText = `Download File Metadata (${metadataBlob.size} bytes)`;
+
+        // Append the metadata download link to the output
+        document.getElementById('watermark_output').appendChild(document.createElement('br'));
+        document.getElementById('watermark_output').appendChild(metadataDownloadLink);
+        document.getElementById('watermark_output').appendChild(document.createElement('br'));
+document.getElementById('watermark_output').appendChild(document.createElement('br'));
+document.getElementById('watermark_output').appendChild(document.createElement('hr'));
+document.getElementById('watermark_output').appendChild(document.createElement('br'));
+// Create and append a descriptive div before the textarea
+const descriptionDiv = document.createElement('div');
+descriptionDiv.innerText = 'File Meta Data (Use to Verify Unsigned File)';
+document.getElementById('watermark_output').appendChild(descriptionDiv);
+        // Display the contents of the metadata in a textarea
+        const readerForBlob = new FileReader();
+        readerForBlob.onload = function(event) {
+            const textArea = document.createElement('textarea');
+            textArea.value = event.target.result;
+            textArea.rows = 10;
+            textArea.cols = 150;
+            document.getElementById('watermark_output').appendChild(document.createElement('br'));
+            document.getElementById('watermark_output').appendChild(textArea);
+        };
+        readerForBlob.readAsText(metadataBlob);  // Read the Blob as text and display
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+
+
+        // Function to finalize MP3 watermarking by sending final hash and size to the server
+       async function finalizeMp3Watermark(mp3Blob, certId, originalFileHashHex, txid) {
+    const newArrayBuffer = await mp3Blob.arrayBuffer();
+    const newHashBuffer = await crypto.subtle.digest('SHA-256', newArrayBuffer);
+    const newFileHashHex = Array.from(new Uint8Array(newHashBuffer))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+    const newFileSize = mp3Blob.size;
+
+    // Send final hash and size to server
+    const finalizeData = {
+        cert_id: certId,
+        final_file_hash: newFileHashHex,
+        final_file_size: newFileSize,
+        original_file_hash: originalFileHashHex,
+        txid: txid
+    };
+
+    const finalizeResponse = await fetch('/finalize_watermark', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(finalizeData),
+    });
+
+    if (!finalizeResponse.ok) {
+        const errorData = await finalizeResponse.json();
+        alert(`Failed to finalize watermark: ${errorData.detail}`);
+        return;
+    }
+}
+
+
+        // Function to import data for verification from a file
+        async function importDataForVerification() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.txt';
+
+            input.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function (event) {
+                        const data = event.target.result;
+                        const certIdMatch = data.match(/CertID: (.*)/);
+                        const privateKeyMatch = data.match(/Private Key:\n([\s\S]*)/);
+
+                        if (certIdMatch && privateKeyMatch) {
+                            const certId = certIdMatch[1];
+                            const privateKey = privateKeyMatch[1];
+
+                            document.getElementById('cert_id_input').value = certId.trim();
+                            document.getElementById('private_key_input').value = privateKey.trim();
+                        } else {
+                            alert('Invalid file format.');
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+            };
+
+            input.click();
+        }
+
+        // Function to import data for watermarking from a file
+        async function importDataForWatermark() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.txt';
+
+            input.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function (event) {
+                        const data = event.target.result;
+                        const certIdMatch = data.match(/CertID: (.*)/);
+                        const privateKeyMatch = data.match(/Private Key:\n([\s\S]*)/);
+
+                        if (certIdMatch && privateKeyMatch) {
+                            const certId = certIdMatch[1];
+                            const privateKey = privateKeyMatch[1];
+
+                            document.getElementById('file_cert_id_input').value = certId.trim();
+                            document.getElementById('file_private_key_input').value = privateKey.trim();
+                        } else {
+                            alert('Invalid file format.');
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+            };
+
+            input.click();
+        }
+
+        // Function to verify an image or MP3 file
+        async function verifyImage() {
+            const fileInput = document.getElementById('verify_file_input');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                alert('Please select a file to verify');
+                return;
+            }
+
+            const fileType = file.type; // Check the file type (image or MP3)
+
+            try {
+                const fileArrayBuffer = await file.arrayBuffer();
+                const hashBuffer = await crypto.subtle.digest('SHA-256', fileArrayBuffer);
+                const fileHashHex = Array.from(new Uint8Array(hashBuffer))
+                    .map(b => b.toString(16).padStart(2, '0'))
+                    .join('');
+
+                // Prepare the data for sending to the server
+                const requestData = {
+                    file_hash: fileHashHex,
+                    file_size: file.size
+                };
+                console.log("File hash:", fileHashHex);  // Debug: Check the file hash
+                console.log("File size:", file.size);    // Debug: Check the file size
+                let username = '';
+                let watermark = '';
+
+                if (fileType.startsWith('image/')) {
+                    // Handle image verification
+                    const reader = new FileReader();
+                    reader.onload = async function (e) {
+                        const dataURL = e.target.result;
+
+                        // Extract EXIF data from image
+                        const exifObj = piexif.load(dataURL);
+                        const zeroth = exifObj['0th'];
+                        watermark = zeroth[piexif.ImageIFD.ImageDescription];
+                        username = zeroth[piexif.ImageIFD.Artist];
+
+                        // If no watermark or username found in EXIF, notify the user
+                        if (!watermark || !username) {
+                            document.getElementById('verify_output').innerText = 'No watermark or username found in image metadata.';
+                            return;
+                        }
+
+                        // Add username to requestData for server verification
+                        requestData.username = username;
+
+                        // Send the data to the server for verification
+                        const verifyResponse = await fetch('/verify_image', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(requestData)
+                        });
+
+                        const verifyResult = await verifyResponse.json();
+
+                        // Clear previous content before appending
+                        const verifyOutput = document.getElementById('verify_output');
+                        verifyOutput.innerHTML = '';
+
+                        // Display image with scaled dimensions
+                        const img = new Image();
+                        img.src = dataURL;
+                        img.onload = function () {
+                            const maxWidth = 500;
+                            const maxHeight = 500;
+                            let width = img.width;
+                            let height = img.height;
+
+                            // Scale the image while maintaining aspect ratio
+                            if (width > height) {
+                                if (width > maxWidth) {
+                                    height *= maxWidth / width;
+                                    width = maxWidth;
+                                }
+                            } else {
+                                if (height > maxHeight) {
+                                    width *= maxHeight / height;
+                                    height = maxHeight;
+                                }
+                            }
+
+                            img.width = width;
+                            img.height = height;
+                        };
+                        let cleanedWatermark = watermark.replace("Watermark: ", "");
+                        // Display metadata including the original hash, size, and filename
+                        const metadataDiv = document.createElement('div');
+                        metadataDiv.innerHTML = `
+                            <strong>Certified Creator:</strong> ${username}<br>
+                            <strong>Watermark:</strong> ${cleanedWatermark}<br>
+                            <strong>Unsigned File Hash:</strong> ${verifyResult.original_file_hash || 'Not available'}<br>
+                            <strong>Unsigned File Size:</strong> ${verifyResult.original_file_size || 'Not available'} bytes<br>
+                            <strong>Original Filename:</strong> ${verifyResult.original_file_name || 'Not available'}<br>
+                            <strong>Signed File Hash:</strong> ${fileHashHex}<br>
+                            <strong>Signed File Size:</strong> ${file.size} bytes<br>
+    <strong>Unsigned File NCZ txID:</strong> ${verifyResult.txid || 'Not available'}
+                        `;
+
+                        // Display verification result
+                        const verificationMessage = document.createElement('div');
+                        verificationMessage.innerHTML = `<br><strong>Verification Result:</strong> ${verifyResult.message}`;
+
+                        // Append image, metadata, and result to the output div
+                        verifyOutput.appendChild(img);
+                        verifyOutput.appendChild(metadataDiv);
+                        verifyOutput.appendChild(verificationMessage);
+
+
+let certTxid = extractCertTxid(watermark);
+console.log(watermark);
+console.log(certTxid);
+
+if (!certTxid) {
+    console.error('CertTxid could not be extracted from the watermark');
+    return;
+}
+await findSignedTxid(verifyResult.txid, certTxid);
+
+
+
+
+
+
+                    };
+
+                    reader.readAsDataURL(file); // Trigger file reading as Data URL
+                } else if (fileType === 'audio/mpeg' || fileType === 'audio/mp3') {
+                    // Handle MP3 verification using jsmediatags
+                    jsmediatags.read(file, {
+                        onSuccess: async function(tag) {
+                            const tags = tag.tags;
+                            console.log("MP3 tags:", tags); // Debug: Log all tags for inspection
+
+                            // Extract the 'Artist' tag for the username
+                            let username = tags.artist || 'Unknown';
+
+                            // Extract the watermark (from the 'comment' or 'COMM' tag)
+                            let watermark = tags.comment ? tags.comment.text : null;
+
+                            if (!watermark && tags.COMM && tags.COMM.data && tags.COMM.data.text) {
+                                watermark = tags.COMM.data.text;
+                            }
+
+                            if (!watermark) {
+                                document.getElementById('verify_output').innerText = 'No watermark found in MP3 metadata';
+                                return;
+                            }
+
+                            console.log("Extracted username:", username); // Debug: Check extracted username
+
+                            // Prepare the request data for the server
+                            const requestData = {
+                                username: username,
+                                file_hash: fileHashHex,
+                                file_size: file.size
+
+                            };
+
+                            console.log("Request Data:", requestData); // Debug: Log the request data before sending
+
+                            // Send the data to the server for verification
+                            const verifyResponse = await fetch('/verify_audio', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(requestData),
+                            });
+
+                            const verifyResult = await verifyResponse.json();
+
+                            // Handle the verification result
+                            const verifyOutput = document.getElementById('verify_output');
+                            verifyOutput.innerHTML = ''; // Clear previous content before appending
+                            let cleanedWatermark = watermark.replace("Watermark: ", "");
+                            const metadataDiv = document.createElement('div');
+                            metadataDiv.innerHTML = `
+                                <strong>Certified Creator:</strong> ${username}<br>
+                                <strong>Watermark:</strong> ${cleanedWatermark}<br>
+                                <strong>Unsigned File Hash:</strong> ${verifyResult.original_file_hash || 'Not available'}<br>
+                                <strong>Unsigned File Size:</strong> ${verifyResult.original_file_size || 'Not available'} bytes<br>
+                                <strong>Original Filename:</strong> ${verifyResult.original_file_name || 'Not available'}<br>
+                                <strong>Signed File Hash:</strong> ${fileHashHex}<br>
+                                <strong>Signed File Size:</strong> ${file.size} bytes<br>
+    <strong>Unsigned File NCZ txID:</strong> ${verifyResult.txid || 'Not available'}
+                            `;
+
+
+                            const verificationMessage = document.createElement('div');
+                            verificationMessage.innerHTML = `<br><strong>Verification Result:</strong> ${verifyResult.message || 'Verification failed'}`;
+
+                            // Append metadata and result to the output div
+                            verifyOutput.appendChild(metadataDiv);
+                            verifyOutput.appendChild(verificationMessage);
+let certTxid = extractCertTxid(watermark);
+console.log(watermark);
+console.log(certTxid);
+
+if (!certTxid) {
+    console.error('CertTxid could not be extracted from the watermark');
+    return;
+}
+await findSignedTxid(verifyResult.txid, certTxid);
+
+                        },
+                        onError: function(error) {
+                            console.log('Error reading MP3 metadata:', error);
+                            document.getElementById('verify_output').innerText = 'Error reading MP3 metadata';
+                        }
+                    });
+                } else {
+                    alert('Unsupported file type. Please select a JPEG image or an MP3 file.');
+                }
+
+            } catch (error) {
+                console.error('Error verifying file:', error);
+                alert('Error verifying file: ' + error.message);
+            }
+        }
+
+function extractCertTxid(watermark) {
+    const txidMatch = watermark.match(/Cert_txID:\s([a-fA-F0-9]{64})/);
+    if (txidMatch && txidMatch[1]) {
+        return txidMatch[1];  // Return the extracted Cert_txID
+    }
+    return null;  // Return null if not found
+}
+
+
+
+// Function to find signed txid and create its link
+async function findSignedTxid(unsignedTxid, certTxid) {
+console.log(certTxid);
+console.log('unsigned id'+unsignedTxid);
+    try {
+        const txidMatch = unsignedTxid.match(/tx\/([a-fA-F0-9]{64})/);
+        let extractedTxid;
+        
+        if (txidMatch && txidMatch[1]) {
+            extractedTxid = txidMatch[1];  // The actual txid
+console.log(extractedTxid);
+
+        } else {
+            throw new Error("Unable to extract txid from the input");
+        }
+        const response = await fetch(`/find_signed_txid/${extractedTxid}`);
+        if (!response.ok) {
+            throw new Error("Failed to fetch the signed txid");
+        }
+
+        const data = await response.json();
+        const signedTxid = data.signed_txid;
+        //const certTxid = data.cert_txid; // Assuming you get cert_txid from the response
+
+
+        // Create the signed txid link
+        const signedTxidLink = document.createElement('a');
+                signedTxidLink.href = `http://rpc.nanocheeze.com/tx/${certTxid}`; // Use certTxid here
+
+        signedTxidLink.target = '_blank';
+        signedTxidLink.innerText = `View Creator's Cert Transaction (txid) on the NCZ Block Explorer`;
+        document.getElementById('verify_output').appendChild(document.createElement('br'));
+
+        // Create the strong element for NCZ txID
+        const strongText = document.createElement('strong');
+        strongText.innerHTML = 'Signed File NCZ txID: ';
+
+        // Create a link for the actual txid
+        const txidLink = document.createElement('a');
+        txidLink.href = `http://rpc.nanocheeze.com/tx/${signedTxid}`;
+        txidLink.target = '_blank';
+        txidLink.innerText = signedTxid;
+
+        // Append the strong text and txid link to the output
+        document.getElementById('verify_output').appendChild(strongText);
+        document.getElementById('verify_output').appendChild(txidLink);
+
+        // Add another <br> element
+        document.getElementById('verify_output').appendChild(document.createElement('br'));
+        document.getElementById('verify_output').appendChild(document.createElement('br'));
+
+        document.getElementById('verify_output').appendChild(signedTxidLink);
+        document.getElementById('verify_output').appendChild(document.createElement('br'));
+    } catch (error) {
+        console.error("Error fetching signed txid:", error);
+        alert("Failed to retrieve the signed transaction ID.");
+    }
+}
+
+
+// Function to toggle the display of the metadata file input
+function toggleUnsignedFile() {
+    const checkbox = document.getElementById('unsigned_checkbox');
+    const metadataFileInput = document.getElementById('metadata_file_input');
+    if (checkbox.checked) {
+        metadataFileInput.style.display = 'block';
+        metadata_label.style.display = 'block';
+
+
+    } else {
+        metadataFileInput.style.display = 'none';
+        metadata_label.style.display = 'none';
+
+    }
+}
+
+
+
+
+// Function to validate the metadata file
+function validateMetadataFile(file) {
+    const filename = file.name;
+    const isTxt = file.type === 'text/plain';
+    const startsWithMetadata = filename.startsWith('metadata_');
+    return isTxt && startsWithMetadata;
+}
+
+
+
+
+    </script>
+
+
+</head>
+<body onload="showSection(null)">
+    <h1>NanoCheeZe AI Certification Watermarking Tool</h1>
+
+    <!-- Navigation Buttons -->
+    <div class="nav-buttons">
+        <button data-section="null" onclick="showSection(null)">Home</button>
+        <button data-section="create_cert_section" onclick="showSection('create_cert_section')">Create Certificate</button>
+        <button data-section="verify_key_section" onclick="showSection('verify_key_section')">Verify Private Key</button>
+        <button data-section="sign_file_section" onclick="showSection('sign_file_section')">Sign File</button>
+        <button data-section="verify_file_section" onclick="showSection('verify_file_section')">Verify File</button>
+    </div>
+<br />
+    <!-- Logo Image -->
+    <img id="logo" src="https://www.xtdevelopment.net/music/logo.png" alt="Logo">
+
+    <!-- Sections -->
+    <div id="create_cert_section" class="section">
+        <h2>Create a New Certificate</h2>
+        <label for="username">Username:</label>
+        <input type="text" id="username" placeholder="Enter username">
+        <button onclick="generateCert()">Generate Certificate</button>
+        <pre id="cert_output"></pre>
+
+        <h3>Your Private Key (DO NOT SHARE THIS):</h3>
+        <pre id="private_key_output" style="color: red;"></pre>
+    </div>
+
+    <div id="verify_key_section" class="section">
+        <h2>Verify Your Private Key</h2>
+        <button onclick="importDataForVerification()">Import Data</button>
+
+        <label for="cert_id_input">Cert ID:</label>
+        <input type="text" id="cert_id_input" placeholder="Enter your cert ID"><br><br>
+        <textarea id="private_key_input" rows="2" cols="70" placeholder="Enter your private key"></textarea><br>
+        <button onclick="signMessageWithPrivateKey()">Verify Key</button>
+        <pre id="signature_output"></pre>
+        <pre id="verification_output"></pre>
+    </div>
+
+    <div id="sign_file_section" class="section">
+        <h2>Sign a File and Embed Watermark</h2>
+        <button onclick="importDataForWatermark()">Import Data</button>
+        <label for="file_cert_id_input">Cert ID:</label>
+        <input type="text" id="file_cert_id_input" placeholder="Enter your cert ID"><br><br>
+        <textarea id="file_private_key_input" rows="2" cols="70" placeholder="Enter your private key"></textarea><br><br>
+        <input type="file" id="file_input" accept=".jpeg,.jpg,.mp3" />
+        <br><br>
+        <button onclick="signFile()">Sign File and Embed Watermark</button>
+        <pre id="file_signature_output"></pre>
+        <pre id="file_verification_output"></pre>
+        <div id="watermark_output"></div>
+    </div>
+
+
+
+    <div id="verify_file_section" class="section">
+        <h2>Verify a File</h2>
+
+    <!-- Checkbox for Unsigned File -->
+    <label>
+        <input type="checkbox" id="unsigned_checkbox" onchange="toggleUnsignedFile()"> Unsigned File
+    </label>
+    <br><br>
+
+
+
+        <input type="file" id="verify_file_input" accept="image/jpeg,audio/mp3"><br><br>
+
+    <!-- Secondary File Input for Metadata (Initially Hidden) -->
+<label id="metadata_label" style="display: none;">Metadata Upload:</label>
+<input type="file" id="metadata_file_input" accept=".txt" style="display: none;"><br><br>
+    
+        <button onclick="verifyImage()">Verify File</button>
+        <pre id="verify_output"></pre>
+    </div>
+
+
+
+
+
+
+<br /><br /><br /><br />
+<div><center>
+No data is sent to the verification blockchain except for your signed message and your public key which is used to verify that your private key was authentic.<br />All Data is processed and downloaded locally from your machine using a blob. Meta data is injected into the EXIF data of images and into the comments and author section of mp3 files. Video Support soon.<br />Do not lose your private keys. They can not be retrieved or recovered.<br />If you don't have them backedup up then nobody does. We do not have your private keys as your machine generated them.<br /><br />© 2024 NanoCheeZe
+<br /><br />
+    <img id="logofooter" src="https://www.xtdevelopment.net/music/logo.png" alt="Logo">
+</center>
+</div>
+
+
+
+
+</body>
+</html>
