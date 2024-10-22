@@ -1061,7 +1061,7 @@ document.getElementById('watermark_output').appendChild(descriptionDiv);
                         requestData.username = username;
 
                         // Send the data to the server for verification
-                        const verifyResponse = await fetch('/verify_image', {
+                        const verifyResponse = await fetch('https://rpc.nanocheeze.com:8211/verify_image', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(requestData)
