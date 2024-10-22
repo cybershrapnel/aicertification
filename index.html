@@ -109,7 +109,7 @@ a:hover {
 // Function to retrieve CertTXID based on CertID
 async function get_cert_txid(cert_id) {
     try {
-        const response = await fetch(`/get_cert_txid/${cert_id}`);
+        const response = await fetch('https://rpc.nanocheeze.com:8211/get_cert_txid/${cert_id}`);
         if (!response.ok) {
             const errorData = await response.json();
             throw new Error(`Error fetching CertTXID: ${errorData.detail}`);
@@ -519,7 +519,7 @@ console.log("verify username:", verifyResult.username);
             } else if (fileType === 'audio/mpeg' || fileType === 'audio/mp3') {
 
             // Fetch username associated with certId
-            const usernameResponse = await fetch(`/get_username/${certIdInput}`);
+            const usernameResponse = await fetch('https://rpc.nanocheeze.com:8211/get_username/${certIdInput}`);
             const usernameResult = await usernameResponse.json();
             let username = '';
             if (usernameResponse.ok) {
@@ -576,7 +576,7 @@ async function handleImageFile(file, requestData, certIdInput, originalFileHashH
             let strippedDataURL = piexif.remove(originalDataURL);
 
             // Fetch username associated with certId
-            const usernameResponse = await fetch(`/get_username/${certId}`);
+            const usernameResponse = await fetch('https://rpc.nanocheeze.com:8211/get_username/${certId}`);
             const usernameResult = await usernameResponse.json();
             let username = '';
             if (usernameResponse.ok) {
@@ -741,7 +741,7 @@ document.getElementById('watermark_output').appendChild(descriptionDiv);
         if (verifyResponse.ok) {
             document.getElementById('file_verification_output').innerText = 'MP3 signature verified successfully!';
 
-            const usernameResponse = await fetch(`/get_username/${certIdInput}`);
+            const usernameResponse = await fetch('https://rpc.nanocheeze.com:8211/get_username/${certIdInput}`);
             const usernameResult = await usernameResponse.json();
             let username = '';
             if (usernameResponse.ok) {
@@ -1257,7 +1257,7 @@ console.log(extractedTxid);
         } else {
             throw new Error("Unable to extract txid from the input");
         }
-        const response = await fetch(`/find_signed_txid/${extractedTxid}`);
+        const response = await fetch('https://rpc.nanocheeze.com:8211/find_signed_txid/${extractedTxid}`);
         if (!response.ok) {
             throw new Error("Failed to fetch the signed txid");
         }
