@@ -109,7 +109,7 @@ a:hover {
 // Function to retrieve CertTXID based on CertID
 async function get_cert_txid(cert_id) {
     try {
-        const response = await fetch('https://rpc.nanocheeze.com:8211/get_cert_txid/${cert_id}`);
+        const response = await fetch(`https://rpc.nanocheeze.com:8211/get_cert_txid/${cert_id}`);
         if (!response.ok) {
             const errorData = await response.json();
             throw new Error(`Error fetching CertTXID: ${errorData.detail}`);
@@ -178,7 +178,7 @@ function showSection(sectionId) {
 
             try {
                 // Send the username to the server and get the cert_id
-                const response = await fetch('/create_cert', {
+                const response = await fetch(`https://rpc.nanocheeze.com:8211/create_cert`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username: username })
@@ -232,7 +232,7 @@ function showSection(sectionId) {
             const username = document.getElementById('username').value.trim();
 
             // Send the public key to the server for registration
-            const registerResponse = await fetch('/register_public_key', {
+            const registerResponse = await fetch(`https://rpc.nanocheeze.com:8211/register_public_key`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ cert_id: certId, public_key: publicKeyPem })
@@ -354,7 +354,7 @@ console.log(certIdInput);
                 document.getElementById('signature_output').innerText = `Signature: ${signatureHex}`;
 
                 // Send the signature and cert ID to the server for verification
-                const verifyResponse = await fetch('/verify_signature', {
+                const verifyResponse = await fetch(`https://rpc.nanocheeze.com:8211/verify_signature`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -478,7 +478,7 @@ async function signFile() {
         };
 
         // Send verification request to the server
-        const verifyResponse = await fetch('/verify_watermark', {
+        const verifyResponse = await fetch(`https://rpc.nanocheeze.com:8211/verify_watermark`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(requestData),
@@ -497,7 +497,7 @@ async function signFile() {
                 original_file_hash: originalFileHashHex
             };
 console.log(finalizeData);
-            const finalizeResponse = await fetch('/finalize_watermark', {
+            const finalizeResponse = await fetch(`https://rpc.nanocheeze.com:8211/finalize_watermark`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(finalizeData),
@@ -519,7 +519,7 @@ console.log("verify username:", verifyResult.username);
             } else if (fileType === 'audio/mpeg' || fileType === 'audio/mp3') {
 
             // Fetch username associated with certId
-            const usernameResponse = await fetch('https://rpc.nanocheeze.com:8211/get_username/${certIdInput}`);
+            const usernameResponse = await fetch(`https://rpc.nanocheeze.com:8211/get_username/${certIdInput}`);
             const usernameResult = await usernameResponse.json();
             let username = '';
             if (usernameResponse.ok) {
@@ -546,7 +546,7 @@ console.log("verify username:", verifyResult.username);
 async function handleImageFile(file, requestData, certIdInput, originalFileHashHex) {
     try {
         // Send data to the server for verification and watermarking
-        const verifyResponse = await fetch('/verify_watermark', {
+        const verifyResponse = await fetch(`https://rpc.nanocheeze.com:8211/verify_watermark`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(requestData),
@@ -576,7 +576,7 @@ async function handleImageFile(file, requestData, certIdInput, originalFileHashH
             let strippedDataURL = piexif.remove(originalDataURL);
 
             // Fetch username associated with certId
-            const usernameResponse = await fetch('https://rpc.nanocheeze.com:8211/get_username/${certId}`);
+            const usernameResponse = await fetch(`https://rpc.nanocheeze.com:8211/get_username/${certId}`);
             const usernameResult = await usernameResponse.json();
             let username = '';
             if (usernameResponse.ok) {
@@ -616,7 +616,7 @@ console.log(txid);
                 txid: txid
             };
 
-            const finalizeResponse = await fetch('/finalize_watermark', {
+            const finalizeResponse = await fetch(`https://rpc.nanocheeze.com:8211/finalize_watermark`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(finalizeData),
@@ -731,7 +731,7 @@ document.getElementById('watermark_output').appendChild(descriptionDiv);
        async function handleMp3File(file, requestData, certIdInput, originalFileHashHex) {
     try {
         // Send data to the server for verification and watermarking
-        const verifyResponse = await fetch('/verify_watermark', {
+        const verifyResponse = await fetch(`https://rpc.nanocheeze.com:8211/verify_watermark`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(requestData),
@@ -741,7 +741,7 @@ document.getElementById('watermark_output').appendChild(descriptionDiv);
         if (verifyResponse.ok) {
             document.getElementById('file_verification_output').innerText = 'MP3 signature verified successfully!';
 
-            const usernameResponse = await fetch('https://rpc.nanocheeze.com:8211/get_username/${certIdInput}`);
+            const usernameResponse = await fetch(`https://rpc.nanocheeze.com:8211/get_username/${certIdInput}`);
             const usernameResult = await usernameResponse.json();
             let username = '';
             if (usernameResponse.ok) {
@@ -818,7 +818,7 @@ console.log('user in handle mp3: '+username);
             txid: txid
         };
 
-        const finalizeResponse = await fetch('/finalize_watermark', {
+        const finalizeResponse = await fetch(`https://rpc.nanocheeze.com:8211/finalize_watermark`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(finalizeData),
@@ -932,7 +932,7 @@ document.getElementById('watermark_output').appendChild(descriptionDiv);
         txid: txid
     };
 
-    const finalizeResponse = await fetch('/finalize_watermark', {
+    const finalizeResponse = await fetch(`https://rpc.nanocheeze.com:8211/finalize_watermark`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(finalizeData),
@@ -1061,7 +1061,7 @@ document.getElementById('watermark_output').appendChild(descriptionDiv);
                         requestData.username = username;
 
                         // Send the data to the server for verification
-                        const verifyResponse = await fetch('https://rpc.nanocheeze.com:8211/verify_image', {
+                        const verifyResponse = await fetch(`https://rpc.nanocheeze.com:8211/verify_image`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(requestData)
@@ -1175,7 +1175,7 @@ await findSignedTxid(verifyResult.txid, certTxid);
                             console.log("Request Data:", requestData); // Debug: Log the request data before sending
 
                             // Send the data to the server for verification
-                            const verifyResponse = await fetch('/verify_audio', {
+                            const verifyResponse = await fetch(`https://rpc.nanocheeze.com:8211/verify_audio`, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify(requestData),
@@ -1257,7 +1257,7 @@ console.log(extractedTxid);
         } else {
             throw new Error("Unable to extract txid from the input");
         }
-        const response = await fetch('https://rpc.nanocheeze.com:8211/find_signed_txid/${extractedTxid}`);
+        const response = await fetch(`https://rpc.nanocheeze.com:8211/find_signed_txid/${extractedTxid}`);
         if (!response.ok) {
             throw new Error("Failed to fetch the signed txid");
         }
