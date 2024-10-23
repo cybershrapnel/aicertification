@@ -1487,7 +1487,7 @@ function validateMetadataFile(file) {
  async function fetchCounters() {
         try {
             // Fetch the certs, watermarking, and verification counters
-            const response = await fetch("/get_counters");
+            const response = await fetch(`https://rpc.nanocheeze.com:8211/get_counters`);
             const data = await response.json();
 
             const certsCreated = data.certs_created;
