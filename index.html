@@ -1487,7 +1487,7 @@ No data is sent to the verification blockchain except for your signed message an
 <script>
     async function fetchChainInfo() {
         try {
-            const response = await fetch('/chain_info');
+            const response = await fetch(`https://rpc.nanocheeze.com:8211/chain_info`);
             if (!response.ok) {
                 throw new Error("Failed to fetch chain info");
             }
