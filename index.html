@@ -1183,9 +1183,6 @@ await findSignedTxid(verifyResult.txid, certTxid);
                             const tags = tag.tags;
                             console.log("MP3 tags:", tags); // Debug: Log all tags for inspection
 
-                            // Extract the 'Artist' tag for the username
-                            let username = tags.artist || 'Unknown';
-
                             // Extract the watermark (from the 'comment' or 'COMM' tag)
                             let watermark = tags.comment ? tags.comment.text : null;
 
@@ -1197,7 +1194,10 @@ await findSignedTxid(verifyResult.txid, certTxid);
                                 document.getElementById('verify_output').innerText = 'No watermark found in MP3 metadata';
                                 return;
                             }
-
+                            
+            // Extract the username from the watermark (from the last part of the comment after the last ", ")
+            const username = watermark.substring(watermark.lastIndexOf(", ") + 2) || 'Unknown';
+                            
                             console.log("Extracted username:", username); // Debug: Check extracted username
 
                             // Prepare the request data for the server
