@@ -1289,6 +1289,13 @@ console.log(extractedTxid);
 
         document.getElementById('verify_output').appendChild(signedTxidLink);
         document.getElementById('verify_output').appendChild(document.createElement('br'));
+
+const resultContainer = document.getElementById('verification-result');
+        // Successful response - display success message in green
+        if (resultContainer) {
+            resultContainer.innerHTML = `<p style="color: green; font-size: 18px;">Successfully found the signed txid on the blockchain!</p>`;
+        }
+        
     } catch (error) {
         console.error('Error fetching signed txid:', error);
 
