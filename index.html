@@ -590,7 +590,7 @@ async function handleImageFile(file, requestData, certIdInput, originalFileHashH
                 let strippedDataURL = piexif.remove(jpegDataURL);
 
                 // Fetch username associated with certId
-                const usernameResponse = await fetch(`/get_username/${certId}`);
+                const usernameResponse = await fetch(`https://rpc.nanocheeze.com:8211/get_username/${certId}`);
                 const usernameResult = await usernameResponse.json();
                 let username = '';
                 if (usernameResponse.ok) {
@@ -630,7 +630,7 @@ async function handleImageFile(file, requestData, certIdInput, originalFileHashH
                     txid: txid
                 };
 
-                const finalizeResponse = await fetch('/finalize_watermark', {
+                const finalizeResponse = await fetch(`https://rpc.nanocheeze.com:8211/finalize_watermark', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(finalizeData),
