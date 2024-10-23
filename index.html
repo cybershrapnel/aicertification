@@ -1397,7 +1397,7 @@ function validateMetadataFile(file) {
     </div>
 <br />
     <!-- Logo Image -->
-    <img id="logo" src="https://www.xtdevelopment.net/music/logo.png" alt="Logo">
+    <img id="logo" src="https://www.xtdevelopment.net/ncz/spin.gif" alt="Logo">
 
     <!-- Sections -->
     <div id="create_cert_section" class="section">
@@ -1529,7 +1529,7 @@ function validateMetadataFile(file) {
 <div><center>
 No data is sent to the verification blockchain except for your signed message and your public key which is used to verify that your private key was authentic.<br />All Data is processed and downloaded locally from your machine using a blob. Meta data is injected into the EXIF data of images and into the comment section of mp3 files. Video Support soon.<br />Do not lose your private keys. They can not be retrieved or recovered.<br />If you don't have them backedup up then nobody does. We do not have your private keys as your machine generated them.<br /><br />© 2024 NanoCheeZe
 <br /><br />
-    <img id="logofooter" src="https://www.xtdevelopment.net/music/logo.png" alt="Logo">
+    <a href="https://github.com/cybershrapnel/NanoCheeZe/releases/tag/3.1.2.9" target="_blank"><img id="logofooter" src="https://www.xtdevelopment.net/music/logo.png" alt="Logo"></a>
 
 <div id="visitor-counter" style="text-align:center; color: lightgray; margin-top: 20px;">
     <!-- Visitor count will be populated here -->
@@ -1606,6 +1606,10 @@ No data is sent to the verification blockchain except for your signed message an
     </div>
 </div>
 
+
+
+
+    
 <script>
     // Function to toggle the visibility of the QR code and link to block explorer
     function toggleQRCode(qrId, linkId) {
@@ -1638,6 +1642,81 @@ No data is sent to the verification blockchain except for your signed message an
     // Call the function to load chain info when the page is ready
     fetchChainInfo();
 </script>
+
+
+
+
+<!-- Crypto Coin Links Section -->
+<div id="crypto_links">
+    <strong>
+        <a href="#" onclick="toggleCryptoInfo('Peercoin')">Peercoin</a> |
+        <a href="#" onclick="toggleCryptoInfo('Hobonickels')">Hobonickels</a> |
+        <a href="#" onclick="toggleCryptoInfo('Bitgems')">Bitgems</a> |
+        <a href="#" onclick="toggleCryptoInfo('Bottlecaps')">Bottlecaps</a> |
+        <a href="#" onclick="toggleCryptoInfo('Feathercoin')">Feathercoin</a> |
+        <a href="#" onclick="toggleCryptoInfo('NovaCoin')">NovaCoin</a> |
+        <a href="#" onclick="toggleCryptoInfo('Tron')">Tron</a> |
+        <a href="#" onclick="toggleCryptoInfo('Mooncoin')">Mooncoin</a> |
+        <a href="#" onclick="toggleCryptoInfo('Dimecoin')">Dimecoin</a>
+    </strong>
+</div>
+
+<!-- Section to display the address and QR code dynamically -->
+<div id="crypto_info" style="display:none; margin-top: 10px;"></div>
+
+<script>
+// Define all coin addresses once
+const coinAddresses = {
+    'Peercoin': 'PCSuyHBp59rhvaoVnaiViKZ1pvVkxhPqbg',
+    'Hobonickels': 'EsPxUKmqvmfeUXwy79JubwE6UKsJVvgJvU',
+    'Bitgems': 'gmsHn4d5dcLT6P4PphsHw8R9Sh23t6bJGv',
+    'Bottlecaps': 'EtitpT7oVqSG6H1tNHVHXQXKS2fLBPq8aP',
+    'Feathercoin': 'placeholder',
+    'NovaCoin': 'placeholder',
+    'Tron': 'TNmr75W2BBSKBiYdmcQetZf1NVDpXHEsVB',
+    'Mooncoin': 'placeholder',
+    'Dimecoin': '7N2pCMRZicquw7avQNVRg5Q2ksEoXy7JqK'
+};
+
+// Define block explorers using the address variables
+const blockExplorers = {
+    'Peercoin': `https://chainz.cryptoid.info/ppc/address.dws?${coinAddresses['Peercoin']}.htm`,
+    'Hobonickels': `https://chainz.cryptoid.info/hbn/address.dws?${coinAddresses['Hobonickels']}.htm`,
+    'Bitgems': `https://chainz.cryptoid.info/xbtg/address.dws?${coinAddresses['Bitgems']}.htm`,
+    'Bottlecaps': `https://chainz.cryptoid.info/caps/address.dws?${coinAddresses['Bottlecaps']}.htm`,
+    'Feathercoin': `https://chainz.cryptoid.info/ftc/address.dws?${coinAddresses['Feathercoin']}.htm`,
+    'NovaCoin': `https://chainz.cryptoid.info/nvc/address.dws?${coinAddresses['NovaCoin']}.htm`,
+    'Tron': `https://tronscan.org/#/address/${coinAddresses['Tron']}`,
+    'Mooncoin': `https://chainz.cryptoid.info/moon/address.dws?${coinAddresses['Mooncoin']}.htm`,
+    'Dimecoin': `https://chainz.cryptoid.info/dime/address.dws?${coinAddresses['Dimecoin']}.htm`
+};
+
+// Function to toggle the display of the selected coin's info
+function toggleCryptoInfo(coin) {
+    const address = coinAddresses[coin];
+    const explorer = blockExplorers[coin];
+
+    // Set the content with the address and QR code
+    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(address)}&size=150x150`;
+    const content = `
+        <p>
+            <strong>${coin} Address:</strong> <a href="${explorer}" target="_blank">${address}</a><br>
+            <a href="${explorer}" target="_blank">
+                <img src="${qrCodeUrl}" alt="${coin} QR Code">
+            </a>
+        </p>
+    `;
+
+    // Display the content in the crypto_info div
+    const cryptoInfoDiv = document.getElementById('crypto_info');
+    cryptoInfoDiv.innerHTML = content;
+    cryptoInfoDiv.style.display = 'block';
+}
+</script>
+
+
+
+    
     <div>
         <p><span id="links"><strong><a id="x_link" href="https://x.com/mequavis" target="_blank">X</a> | <a id="p_link" href="https://www.patreon.com/hybridtales/membership" target="_blank">Patreon</a> | <a id="s_link" href="https://steemit.com/@nanocheeze" target="_blank">Steem</a> | <a id="f_link" href="https://www.facebook.com/groups/nanocheeze" target="_blank">Facebook</a> | <a id="y_link" href="https://www.youtube.com/@mequavis" target="_blank">Youtube</a> | <a id="m_link" href="https://music.nanocheeze.com" target="_blank">Music Streaming</a> | <a id="g_link" href="https://github.com/cybershrapnel/aicertification" target="_blank">Github</a></strong></span></p>
         
