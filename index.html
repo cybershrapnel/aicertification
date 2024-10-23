@@ -1022,6 +1022,14 @@ document.getElementById('watermark_output').appendChild(descriptionDiv);
 
         // Function to verify an image or MP3 file
         async function verifyImage() {
+
+    // Clear the result div before starting verification
+    const resultContainer = document.getElementById('verification-result');
+    if (resultContainer) {
+        resultContainer.innerHTML = ''; // Clear previous results
+    }
+
+            
             const fileInput = document.getElementById('verify_file_input');
             const file = fileInput.files[0];
 
