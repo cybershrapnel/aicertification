@@ -568,98 +568,112 @@ async function handleImageFile(file, requestData, certIdInput, originalFileHashH
 
 
         // Function to embed watermark into image file's metadata using piexifjs
-     async function embedWatermarkIntoFile(file, watermark, certId, originalFileHashHex, txid) {
+   async function embedWatermarkIntoFile(file, watermark, certId, originalFileHashHex, txid) {
     try {
         const reader = new FileReader();
         reader.onload = async function(e) {
             const originalDataURL = e.target.result;
-            let strippedDataURL = piexif.remove(originalDataURL);
 
-            // Fetch username associated with certId
-            const usernameResponse = await fetch(`https://rpc.nanocheeze.com:8211/get_username/${certId}`);
-            const usernameResult = await usernameResponse.json();
-            let username = '';
-            if (usernameResponse.ok) {
-                username = usernameResult.username;
-            } else {
-                alert('Failed to retrieve username');
-                return;
-            }
+            // Convert PNG or GIF to JPEG using canvas
+            const image = new Image();
+            image.src = originalDataURL;
+            image.onload = async function() {
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.width = image.width;
+                canvas.height = image.height;
 
-            // Embed new EXIF metadata with the watermark, username, and txid
-            const zeroth = {};
-            zeroth[piexif.ImageIFD.Artist] = username;  // Store username in the 'Artist' field
-            zeroth[piexif.ImageIFD.ImageDescription] = `${watermark}, txid: ${txid}`;  // Add watermark and txid
+                // Draw the image on canvas, converting it to JPEG format
+                context.drawImage(image, 0, 0);
+                const jpegDataURL = canvas.toDataURL('image/jpeg', 1.0);
 
-            const exifObj = { "0th": zeroth };
-            const exifBytes = piexif.dump(exifObj);
-            const newDataURL = piexif.insert(exifBytes, strippedDataURL);
+                let strippedDataURL = piexif.remove(jpegDataURL);
 
-            // Convert Data URL to Blob
-            const newBlob = dataURLtoBlob(newDataURL);
+                // Fetch username associated with certId
+                const usernameResponse = await fetch(`/get_username/${certId}`);
+                const usernameResult = await usernameResponse.json();
+                let username = '';
+                if (usernameResponse.ok) {
+                    username = usernameResult.username;
+                } else {
+                    alert('Failed to retrieve username');
+                    return;
+                }
 
+                // Embed new EXIF metadata with the watermark, username, and txid
+                const zeroth = {};
+                zeroth[piexif.ImageIFD.Artist] = username;  // Store username in the 'Artist' field
+                zeroth[piexif.ImageIFD.ImageDescription] = `${watermark}, txid: ${txid}`;  // Add watermark and txid
 
-            // Compute hash and size of the updated image
-            const newArrayBuffer = await newBlob.arrayBuffer();
-            const newHashBuffer = await crypto.subtle.digest('SHA-256', newArrayBuffer);
-            const newFileHashHex = Array.from(new Uint8Array(newHashBuffer))
-                .map(b => b.toString(16).padStart(2, '0'))
-                .join('');
-            const newFileSize = newBlob.size;
-console.log(txid);
-            // Send the final hash, size, and txid to the server for record keeping
-            const finalizeData = {
-                cert_id: certId,
-                final_file_hash: newFileHashHex,
-                final_file_size: newFileSize,
-                original_file_hash: originalFileHashHex,
-                txid: txid
-            };
+                const exifObj = { "0th": zeroth };
+                const exifBytes = piexif.dump(exifObj);
+                const newDataURL = piexif.insert(exifBytes, strippedDataURL);
 
-            const finalizeResponse = await fetch(`https://rpc.nanocheeze.com:8211/finalize_watermark`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(finalizeData),
-            });
+                // Convert Data URL to Blob
+                const newBlob = dataURLtoBlob(newDataURL);
 
-            if (!finalizeResponse.ok) {
-                const errorData = await finalizeResponse.json();
-                alert(`Failed to finalize watermark: ${errorData.detail}`);
-                return;
-            }
-            const finalizeResult = await finalizeResponse.json();  // Retrieve both txid and final_op_txid
+                // Compute hash and size of the updated image
+                const newArrayBuffer = await newBlob.arrayBuffer();
+                const newHashBuffer = await crypto.subtle.digest('SHA-256', newArrayBuffer);
+                const newFileHashHex = Array.from(new Uint8Array(newHashBuffer))
+                    .map(b => b.toString(16).padStart(2, '0'))
+                    .join('');
+                const newFileSize = newBlob.size;
+                console.log(txid);
 
-            // Create a download link for the updated image
-            const downloadLink = document.createElement('a');
-            downloadLink.href = URL.createObjectURL(newBlob);
-            downloadLink.download = `watermarked_${file.name}`;
-downloadLink.innerText = `Download Watermarked Image (${newFileSize} bytes)`;
+                // Send the final hash, size, and txid to the server for record keeping
+                const finalizeData = {
+                    cert_id: certId,
+                    final_file_hash: newFileHashHex,
+                    final_file_size: newFileSize,
+                    original_file_hash: originalFileHashHex,
+                    txid: txid
+                };
 
-            document.getElementById('watermark_output').innerHTML = '';
-            document.getElementById('watermark_output').appendChild(downloadLink);
-document.getElementById('watermark_output').appendChild(document.createElement('br'));
+                const finalizeResponse = await fetch('/finalize_watermark', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(finalizeData),
+                });
 
-            // Create links for txid and final_op_txid
-            const txidLink = document.createElement('a');
-            txidLink.href = `http://rpc.nanocheeze.com/tx/${finalizeResult.txid}`;
-            txidLink.target = '_blank';
-            txidLink.innerText = `View Unsigned File Transaction (txid) on the NCZ Block Explorer`;
+                if (!finalizeResponse.ok) {
+                    const errorData = await finalizeResponse.json();
+                    alert(`Failed to finalize watermark: ${errorData.detail}`);
+                    return;
+                }
+                const finalizeResult = await finalizeResponse.json();  // Retrieve both txid and final_op_txid
 
-            const finalOpTxidLink = document.createElement('a');
-            finalOpTxidLink.href = `http://rpc.nanocheeze.com/tx/${finalizeResult.final_op_txid}`;
-            finalOpTxidLink.target = '_blank';
-            finalOpTxidLink.innerText = `View Signed File Transaction (txid) on the NCZ Block Explorer`;
+                // Create a download link for the updated image
+                const downloadLink = document.createElement('a');
+                downloadLink.href = URL.createObjectURL(newBlob);
+                downloadLink.download = `watermarked_${file.name}.jpg`;
+                downloadLink.innerText = `Download Watermarked Image (${newFileSize} bytes)`;
 
-            document.getElementById('watermark_output').appendChild(document.createElement('br'));
-            document.getElementById('watermark_output').appendChild(txidLink);
-            document.getElementById('watermark_output').appendChild(document.createElement('br'));
-            document.getElementById('watermark_output').appendChild(finalOpTxidLink);
-        document.getElementById('watermark_output').appendChild(document.createElement('br'));
+                document.getElementById('watermark_output').innerHTML = '';
+                document.getElementById('watermark_output').appendChild(downloadLink);
+                document.getElementById('watermark_output').appendChild(document.createElement('br'));
 
-// Create the .txt file with metadata and final_op_txid for download
-        const originalFileSize = file.size; // Get the original file size before watermarking
+                // Create links for txid and final_op_txid
+                const txidLink = document.createElement('a');
+                txidLink.href = `http://rpc.nanocheeze.com/tx/${finalizeResult.txid}`;
+                txidLink.target = '_blank';
+                txidLink.innerText = `View Unsigned File Transaction (txid) on the NCZ Block Explorer`;
 
-const metadataContent = `
+                const finalOpTxidLink = document.createElement('a');
+                finalOpTxidLink.href = `http://rpc.nanocheeze.com/tx/${finalizeResult.final_op_txid}`;
+                finalOpTxidLink.target = '_blank';
+                finalOpTxidLink.innerText = `View Signed File Transaction (txid) on the NCZ Block Explorer`;
+
+                document.getElementById('watermark_output').appendChild(document.createElement('br'));
+                document.getElementById('watermark_output').appendChild(txidLink);
+                document.getElementById('watermark_output').appendChild(document.createElement('br'));
+                document.getElementById('watermark_output').appendChild(finalOpTxidLink);
+                document.getElementById('watermark_output').appendChild(document.createElement('br'));
+
+                // Create the .txt file with metadata and final_op_txid for download
+                const originalFileSize = file.size; // Get the original file size before watermarking
+
+                const metadataContent = `
 ${watermark}
 
 Creator: ${username}
@@ -671,42 +685,43 @@ Unsigned File Size: ${originalFileSize} bytes
 Signed File txID: ${finalizeResult.final_op_txid}
 Signed File Hash: ${finalizeResult.final_file_hash}
 Signed File Size: ${newFileSize} bytes
-`;
+                `;
 
+                // Convert the metadata content to a Blob
+                const metadataBlob = new Blob([metadataContent], { type: 'text/plain' });
+                const metadataUrl = URL.createObjectURL(metadataBlob);
 
-// Convert the metadata content to a Blob
-const metadataBlob = new Blob([metadataContent], { type: 'text/plain' });
-const metadataUrl = URL.createObjectURL(metadataBlob);
+                // Create a download link for the metadata .txt file
+                const metadataDownloadLink = document.createElement('a');
+                metadataDownloadLink.href = metadataUrl;
+                metadataDownloadLink.download = `metadata_${file.name}.txt`;
+                metadataDownloadLink.innerText = `Download File Metadata (${metadataBlob.size} bytes)`;
 
-// Create a download link for the metadata .txt file
-const metadataDownloadLink = document.createElement('a');
-metadataDownloadLink.href = metadataUrl;
-metadataDownloadLink.download = `metadata_${file.name}.txt`;
-metadataDownloadLink.innerText = `Download File Metadata (${metadataBlob.size} bytes)`;
-
-// Append the metadata download link to the output
-document.getElementById('watermark_output').appendChild(document.createElement('br'));
-document.getElementById('watermark_output').appendChild(metadataDownloadLink);
-document.getElementById('watermark_output').appendChild(document.createElement('br'));
-document.getElementById('watermark_output').appendChild(document.createElement('br'));
-document.getElementById('watermark_output').appendChild(document.createElement('hr'));
-document.getElementById('watermark_output').appendChild(document.createElement('br'));
-// Create and append a descriptive div before the textarea
-const descriptionDiv = document.createElement('div');
-descriptionDiv.innerText = 'File Meta Data (Use to Verify Unsigned File)';
-document.getElementById('watermark_output').appendChild(descriptionDiv);
-
-            // Display the contents of the metadata in a textarea
-            const readerForBlob = new FileReader();
-            readerForBlob.onload = function(event) {
-                const textArea = document.createElement('textarea');
-                textArea.value = event.target.result;
-                textArea.rows = 10;
-                textArea.cols = 150;
+                // Append the metadata download link to the output
                 document.getElementById('watermark_output').appendChild(document.createElement('br'));
-                document.getElementById('watermark_output').appendChild(textArea);
+                document.getElementById('watermark_output').appendChild(metadataDownloadLink);
+                document.getElementById('watermark_output').appendChild(document.createElement('br'));
+                document.getElementById('watermark_output').appendChild(document.createElement('br'));
+                document.getElementById('watermark_output').appendChild(document.createElement('hr'));
+                document.getElementById('watermark_output').appendChild(document.createElement('br'));
+
+                // Create and append a descriptive div before the textarea
+                const descriptionDiv = document.createElement('div');
+                descriptionDiv.innerText = 'File Meta Data (Use to Verify Unsigned File)';
+                document.getElementById('watermark_output').appendChild(descriptionDiv);
+
+                // Display the contents of the metadata in a textarea
+                const readerForBlob = new FileReader();
+                readerForBlob.onload = function(event) {
+                    const textArea = document.createElement('textarea');
+                    textArea.value = event.target.result;
+                    textArea.rows = 10;
+                    textArea.cols = 150;
+                    document.getElementById('watermark_output').appendChild(document.createElement('br'));
+                    document.getElementById('watermark_output').appendChild(textArea);
+                };
+                readerForBlob.readAsText(metadataBlob);  // Read the Blob as text and display
             };
-            readerForBlob.readAsText(metadataBlob);  // Read the Blob as text and display
         };
         reader.readAsDataURL(file);
     } catch (error) {
@@ -714,6 +729,7 @@ document.getElementById('watermark_output').appendChild(descriptionDiv);
         alert('Error embedding watermark into file: ' + error.message);
     }
 }
+
 
 
 
@@ -1429,7 +1445,7 @@ function validateMetadataFile(file) {
         <label for="file_cert_id_input">Cert ID:</label>
         <input type="text" id="file_cert_id_input" placeholder="Enter your cert ID"><br><br>
         <textarea id="file_private_key_input" rows="2" cols="70" placeholder="Enter your private key"></textarea><br><br>
-        <input type="file" id="file_input" accept=".jpeg,.jpg,.mp3" />
+        <input type="file" id="file_input" accept=".jpeg,.jpg,.mp3,.png,.gif,.webp" />
         <br><br>
         <button onclick="signFile()">Sign File and Embed Watermark</button>
         <pre id="file_signature_output"></pre>
