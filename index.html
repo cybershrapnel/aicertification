@@ -1416,12 +1416,66 @@ function validateMetadataFile(file) {
 
 
 
+<script>
+    async function fetchVisitorCount() {
+        try {
+            // Fetch visitor count
+            const response = await fetch(`https://rpc.nanocheeze.com:8211/count_visits`);
+            const data = await response.json();
+
+            const totalVisits = data.total_visits;
+            const uniqueVisitors = data.unique_visitors;
+
+            document.getElementById('visitor-counter').innerHTML = `
+                Total Visits: ${totalVisits} | Unique Visitors: ${uniqueVisitors}
+            `;
+        } catch (error) {
+            console.error("Error fetching visitor count:", error);
+        }
+    }
+
+    async function fetchCounters() {
+        try {
+            // Fetch the certs, watermarking, and verification counters
+            const response = await fetch(`https://rpc.nanocheeze.com:8211/get_counters`);
+            const data = await response.json();
+
+            const certsCreated = data.certs_created;
+            const filesWatermarked = data.files_watermarked;
+            const filesVerified = data.files_verified;
+
+            document.getElementById('operation-counter').innerHTML = `
+                Certs Created On-Chain: ${certsCreated} | 
+                Files Watermarked: ${filesWatermarked} | 
+                Files Verified: ${filesVerified}
+            `;
+        } catch (error) {
+            console.error("Error fetching counters:", error);
+        }
+    }
+
+    // Fetch visitor count and cert/watermark/verify counters when the page loads
+    fetchVisitorCount();
+    fetchCounters();
+</script>
+
+
+
+
 
 <br /><br /><br /><br />
 <div><center>
 No data is sent to the verification blockchain except for your signed message and your public key which is used to verify that your private key was authentic.<br />All Data is processed and downloaded locally from your machine using a blob. Meta data is injected into the EXIF data of images and into the comments and author section of mp3 files. Video Support soon.<br />Do not lose your private keys. They can not be retrieved or recovered.<br />If you don't have them backedup up then nobody does. We do not have your private keys as your machine generated them.<br /><br />© 2024 NanoCheeZe
 <br /><br />
     <img id="logofooter" src="https://www.xtdevelopment.net/music/logo.png" alt="Logo">
+
+<div id="visitor-counter" style="text-align:center; color: lightgray; margin-top: 20px;">
+    <!-- Visitor count will be populated here -->
+</div>
+    <!-- Operation Counters (Certs, Watermarks, Verifications) -->
+    <div id="operation-counter" style="text-align:center; color: lightgray; margin-top: 20px;">
+        <!-- Cert, watermarking, and verify count will be populated here -->
+    </div>
 </center>
 </div>
 
