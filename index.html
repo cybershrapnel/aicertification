@@ -1014,6 +1014,48 @@ document.getElementById('watermark_output').appendChild(descriptionDiv);
                 return;
             }
 
+
+
+   const isUnsignedChecked = document.getElementById('unsigned_checkbox').checked;
+
+    if (isUnsignedChecked) {
+        // If unsigned checkbox is checked, compare with metadata file and exit early
+        const metadataFileInput = document.getElementById('metadata_file_input');
+        const metadataFile = metadataFileInput.files[0];
+
+        if (!metadataFile) {
+            alert('Please upload the metadata file for unsigned verification');
+            return;
+        }
+
+        // Compute the hash of the selected file
+        const fileArrayBuffer = await file.arrayBuffer();
+        const hashBuffer = await crypto.subtle.digest('SHA-256', fileArrayBuffer);
+        const fileHashHex = Array.from(new Uint8Array(hashBuffer))
+            .map(b => b.toString(16).padStart(2, '0'))
+            .join('');
+
+        // Read and process the metadata file
+        const metadataText = await metadataFile.text();
+        const originalFileHashMatch = metadataText.match(/Unsigned File Hash:\s([a-fA-F0-9]{64})/);
+
+        if (!originalFileHashMatch || !originalFileHashMatch[1]) {
+            alert('Invalid metadata file format. Hash not found.');
+            return;
+        }
+
+        const originalFileHash = originalFileHashMatch[1];
+
+        // Compare the file's hash with the metadata hash
+        if (fileHashHex === originalFileHash) {
+            resultContainer.innerHTML = `<p style="color: green; font-size: 18px;">File hash matches the metadata! Verification successful.</p>`;
+        } else {
+            resultContainer.innerHTML = `<p style="color: red; font-size: 18px;">File hash does not match the metadata. Verification failed.</p>`;
+        }
+
+        return; // Exit early after handling unsigned verification
+    }
+            
             const fileType = file.type; // Check the file type (image or MP3)
 
             try {
@@ -1584,7 +1626,11 @@ No data is sent to the verification blockchain except for your signed message an
     // Call the function to load chain info when the page is ready
     fetchChainInfo();
 </script>
-
+    <div>
+        <p><span id="links"><strong><a id="x_link" href="https://x.com/mequavis" target="_blank">X</a> | <a id="p_link" href="https://www.patreon.com/hybridtales/membership" target="_blank">Patreon</a> | <a id="s_link" href="https://steemit.com/@nanocheeze" target="_blank">Steem</a> | <a id="f_link" href="https://www.facebook.com/groups/nanocheeze" target="_blank">Facebook</a> | <a id="y_link" href="https://www.youtube.com/@mequavis" target="_blank">Youtube</a> | <a id="m_link" href="https://music.nanocheeze.com" target="_blank">Music Streaming</a> | <a id="g_link" href="https://github.com/cybershrapnel/aicertification" target="_blank">Github</a></strong></span></p>
+        
+           
+    </div>
     
 </center>
 </div>
