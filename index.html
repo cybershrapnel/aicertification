@@ -1484,29 +1484,41 @@ function validateMetadataFile(file) {
         }
     }
 
-    async function fetchCounters() {
+ async function fetchCounters() {
         try {
             // Fetch the certs, watermarking, and verification counters
-            const response = await fetch(`https://rpc.nanocheeze.com:8211/get_counters`);
+            const response = await fetch("/get_counters");
             const data = await response.json();
 
             const certsCreated = data.certs_created;
             const filesWatermarked = data.files_watermarked;
             const filesVerified = data.files_verified;
 
+            // Display certs, watermarking, and verification counts
             document.getElementById('operation-counter').innerHTML = `
                 Certs Created On-Chain: ${certsCreated} | 
                 Files Watermarked: ${filesWatermarked} | 
                 Files Verified: ${filesVerified}
             `;
+
+            // Calculate total NCZ spent
+            const nczSpent = (certsCreated * 0.001) + (filesWatermarked * 0.002);
+            
+            // Display the total NCZ spent
+            document.getElementById('ncz-counter').innerHTML = `
+                Total NCZ Spent on Certification: ${nczSpent.toFixed(3)} NCZ
+            `;
+
         } catch (error) {
             console.error("Error fetching counters:", error);
         }
     }
 
+    // Fetch cert/watermark/verify counters and NCZ total when the page loads
+    fetchCounters();
     // Fetch visitor count and cert/watermark/verify counters when the page loads
     fetchVisitorCount();
-    fetchCounters();
+
 </script>
 
 
@@ -1631,6 +1643,11 @@ No data is sent to the verification blockchain except for your signed message an
         
            
     </div>
+
+<!-- New Div to Display Total NCZ Spent -->
+<div id="ncz-counter" style="text-align:center; color: lightgray; margin-top: 20px;">
+    <!-- Total NCZ spent will be populated here -->
+</div>
     
 </center>
 </div>
