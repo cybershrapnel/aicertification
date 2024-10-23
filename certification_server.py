@@ -860,6 +860,29 @@ def get_cert_txid(cert_id: str):
     return {"cert_txid": cert_txid}
 
 
+@app.get("/chain_info")
+def get_chain_info():
+    try:
+        # Call getinfo RPC method to get block count and money supply
+        info = call_rpc('getinfo')
+
+        # Extract block count and money supply from the response
+        block_count = info['blocks']
+        total_coin_supply = info['moneysupply']
+
+        # Get the block hash for the current block count
+        block_hash = call_rpc('getblockhash', [block_count])
+
+        return {
+            "block_count": block_count,
+            "block_hash": block_hash,  # Return the block hash as well
+            "total_coin_supply": total_coin_supply
+        }
+    except Exception as e:
+        logging.error(f"Error fetching chain info: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error fetching chain info: {str(e)}")
+
+
 
 
 # Run the server
