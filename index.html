@@ -781,18 +781,12 @@ console.log('user in handle mp3: '+username);
         // Log the watermark string to verify correctness
         console.log("Watermark String to be written:", watermarkString);
 
-        // Remove any previous ID3 tag to avoid duplication
-        writer.removeTag();
 
         // Set the 'COMM' frame with the watermark (only the signedHash)
         writer.setFrame('COMM', {
             description: 'Watermark',
-            text: watermarkString
+            text: watermarkString+", "+username
         });
-
-        // Set the 'TPE1' frame (Artist)
-        console.log("username String to be written:", username);
-        writer.setFrame('TPE1', [username]);
 
         // Apply all the new metadata tags to the MP3
         writer.addTag();
@@ -1296,8 +1290,13 @@ console.log(extractedTxid);
         document.getElementById('verify_output').appendChild(signedTxidLink);
         document.getElementById('verify_output').appendChild(document.createElement('br'));
     } catch (error) {
-        console.error("Error fetching signed txid:", error);
-        alert("Failed to retrieve the signed transaction ID.");
+        console.error('Error fetching signed txid:', error);
+
+        // Instead of showing a popup, display a message on the page
+        const resultContainer = document.getElementById('verification-result');
+        if (resultContainer) {
+            resultContainer.innerHTML = `<p style="color: red; font-size: 18px;">The block hasn't been written yet. Please try again in a moment.</p>`;
+        }
     }
 }
 
@@ -1410,6 +1409,8 @@ function validateMetadataFile(file) {
     
         <button onclick="verifyImage()">Verify File</button>
         <pre id="verify_output"></pre>
+        <div id="verification-result"></div>
+
     </div>
 
 
@@ -1510,7 +1511,72 @@ No data is sent to the verification blockchain except for your signed message an
 </script>
 
 
+<!-- Help & Support Us Section -->
+<div id="support_section">
+    <h2>Help Support Us</h2>
+    <p>We appreciate your support! You can donate using the following cryptocurrency addresses:</p>
 
+    <div>
+        <p><strong>Bitcoin Address:</strong> <span id="btc_address" onclick="toggleQRCode('btc_qr', 'btc_link')">1FBN84Rbw612pLpnyFn8orH5JdjaqhUr18</span></p>
+        <a id="btc_link" href="#" target="_blank" style="display:none;">
+            <img id="btc_qr" alt="BTC QR Code" style="display:none;">
+        </a>
+    </div>
+
+    <div>
+        <p><strong>Litecoin Address:</strong> <span id="ltc_address" onclick="toggleQRCode('ltc_qr', 'ltc_link')">LeWKV2SwbSr1YotCSD99pnTSTA53xcQk2Z</span></p>
+        <a id="ltc_link" href="#" target="_blank" style="display:none;">
+            <img id="ltc_qr" alt="LTC QR Code" style="display:none;">
+        </a>
+    </div>
+
+    <div>
+        <p><strong>Dogecoin Address:</strong> <span id="doge_address" onclick="toggleQRCode('doge_qr', 'doge_link')">DOGE_ADDRESS_HERE</span></p>
+        <a id="doge_link" href="#" target="_blank" style="display:none;">
+            <img id="doge_qr" alt="DOGE QR Code" style="display:none;">
+        </a>
+    </div>
+
+    <div>
+        <p><strong>Ethereum Address:</strong> <span id="eth_address" onclick="toggleQRCode('eth_qr', 'eth_link')">0x8265a4611258fDA6B5040cF9dB50FF5702B208E1</span></p>
+        <a id="eth_link" href="#" target="_blank" style="display:none;">
+            <img id="eth_qr" alt="ETH QR Code" style="display:none;">
+        </a>
+    </div>
+</div>
+
+<script>
+    // Function to toggle the visibility of the QR code and link to block explorer
+    function toggleQRCode(qrId, linkId) {
+        const qrElement = document.getElementById(qrId);
+        const linkElement = document.getElementById(linkId);
+        const isHidden = qrElement.style.display === 'none';
+        
+        qrElement.style.display = isHidden ? 'block' : 'none';
+        linkElement.style.display = isHidden ? 'block' : 'none';
+    }
+
+    // Function to generate QR code URL using goqr.me
+    function generateQRCodeURL(address) {
+        return `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(address)}&size=200x200`;
+    }
+
+    // Set QR code images and block explorer links for each cryptocurrency address
+    document.getElementById('btc_qr').src = generateQRCodeURL(document.getElementById('btc_address').innerText);
+    document.getElementById('btc_link').href = `https://www.blockchain.com/btc/address/${document.getElementById('btc_address').innerText}`;
+
+    document.getElementById('ltc_qr').src = generateQRCodeURL(document.getElementById('ltc_address').innerText);
+    document.getElementById('ltc_link').href = `https://blockchair.com/litecoin/address/${document.getElementById('ltc_address').innerText}`;
+
+    document.getElementById('doge_qr').src = generateQRCodeURL(document.getElementById('doge_address').innerText);
+    document.getElementById('doge_link').href = `https://dogechain.info/address/${document.getElementById('doge_address').innerText}`;
+
+    document.getElementById('eth_qr').src = generateQRCodeURL(document.getElementById('eth_address').innerText);
+    document.getElementById('eth_link').href = `https://etherscan.io/address/${document.getElementById('eth_address').innerText}`;
+
+    // Call the function to load chain info when the page is ready
+    fetchChainInfo();
+</script>
 
     
 </center>
