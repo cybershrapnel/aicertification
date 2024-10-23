@@ -630,7 +630,7 @@ async function handleImageFile(file, requestData, certIdInput, originalFileHashH
                     txid: txid
                 };
 
-                const finalizeResponse = await fetch(`https://rpc.nanocheeze.com:8211/finalize_watermark', {
+                const finalizeResponse = await fetch(`https://rpc.nanocheeze.com:8211/finalize_watermark`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(finalizeData),
