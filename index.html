@@ -1476,6 +1476,43 @@ No data is sent to the verification blockchain except for your signed message an
     <div id="operation-counter" style="text-align:center; color: lightgray; margin-top: 20px;">
         <!-- Cert, watermarking, and verify count will be populated here -->
     </div>
+
+
+<div>
+    <p>Total Coin Supply: <span id="total_supply"></span></p>
+    <p>Current Block: <span id="block_count"></span></p>
+    <a id="block_explorer_link" href="#" target="_blank">View the Block Explorer</a>
+</div>
+
+<script>
+    async function fetchChainInfo() {
+        try {
+            const response = await fetch('/chain_info');
+            if (!response.ok) {
+                throw new Error("Failed to fetch chain info");
+            }
+            const data = await response.json();
+
+            // Update the frontend with block count and coin supply
+            document.getElementById('block_count').innerText = data.block_count;
+            document.getElementById('total_supply').innerText = data.total_coin_supply;
+
+            // Set the block explorer link using the block hash
+            const blockExplorerLink = `http://rpc.nanocheeze.com/block/${data.block_hash}`;
+            document.getElementById('block_explorer_link').href = blockExplorerLink;
+        } catch (error) {
+            console.error("Error fetching chain info:", error);
+        }
+    }
+
+    // Call the function to load data when the page is ready
+    fetchChainInfo();
+</script>
+
+
+
+
+    
 </center>
 </div>
 
