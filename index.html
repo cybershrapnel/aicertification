@@ -1584,7 +1584,7 @@ No data is sent to the verification blockchain except for your signed message an
             document.getElementById('total_supply').innerText = data.total_coin_supply;
 
             // Set the block explorer link using the block hash
-            const blockExplorerLink = `http://rpc.nanocheeze.com/block/${data.block_hash}`;
+            const blockExplorerLink = `http://nanocheeze.com/block/${data.block_hash}`;
             document.getElementById('block_explorer_link').href = blockExplorerLink;
         } catch (error) {
             console.error("Error fetching chain info:", error);
