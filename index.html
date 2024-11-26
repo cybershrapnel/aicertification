@@ -273,7 +273,7 @@ function showSection(sectionId) {
 
 // Create the block explorer link
             const blockExplorerLink = document.createElement('a');
-            blockExplorerLink.href = `http://rpc.nanocheeze.com/tx/${txid}`; // Replace with your actual block explorer URL if different
+            blockExplorerLink.href = `https://nanocheeze.com/tx/${txid}`; // Replace with your actual block explorer URL if different
             blockExplorerLink.target = '_blank'; // Opens the link in a new tab
             blockExplorerLink.innerText = 'View Transaction on Block Explorer';
             blockExplorerLink.style.display = 'block'; // Ensures the link appears on a new line
@@ -655,12 +655,12 @@ async function handleImageFile(file, requestData, certIdInput, originalFileHashH
 
                 // Create links for txid and final_op_txid
                 const txidLink = document.createElement('a');
-                txidLink.href = `http://rpc.nanocheeze.com/tx/${finalizeResult.txid}`;
+                txidLink.href = `http://nanocheeze.com/tx/${finalizeResult.txid}`;
                 txidLink.target = '_blank';
                 txidLink.innerText = `View Unsigned File Transaction (txid) on the NCZ Block Explorer`;
 
                 const finalOpTxidLink = document.createElement('a');
-                finalOpTxidLink.href = `http://rpc.nanocheeze.com/tx/${finalizeResult.final_op_txid}`;
+                finalOpTxidLink.href = `http://nanocheeze.com/tx/${finalizeResult.final_op_txid}`;
                 finalOpTxidLink.target = '_blank';
                 finalOpTxidLink.innerText = `View Signed File Transaction (txid) on the NCZ Block Explorer`;
 
@@ -854,12 +854,12 @@ downloadLink.innerText = `Download Watermarked MP3 (${newFileSize} bytes)`;
 
         // Create links for txid and final_op_txid
         const txidLink = document.createElement('a');
-        txidLink.href = `http://rpc.nanocheeze.com/tx/${finalizeResult.txid}`;
+        txidLink.href = `http://nanocheeze.com/tx/${finalizeResult.txid}`;
         txidLink.target = '_blank';
         txidLink.innerText = `View Unsigned File Transaction (txid) on the NCZ Block Explorer`;
 
         const finalOpTxidLink = document.createElement('a');
-        finalOpTxidLink.href = `http://rpc.nanocheeze.com/tx/${finalizeResult.final_op_txid}`;
+        finalOpTxidLink.href = `http://nanocheeze.com/tx/${finalizeResult.final_op_txid}`;
         finalOpTxidLink.target = '_blank';
         finalOpTxidLink.innerText = `View Signed File Transaction (txid) on the NCZ Block Explorer`;
 
@@ -1329,7 +1329,7 @@ console.log(extractedTxid);
 
         // Create the signed txid link
         const signedTxidLink = document.createElement('a');
-                signedTxidLink.href = `http://rpc.nanocheeze.com/tx/${certTxid}`; // Use certTxid here
+                signedTxidLink.href = `http://nanocheeze.com/tx/${certTxid}`; // Use certTxid here
 
         signedTxidLink.target = '_blank';
         signedTxidLink.innerText = `View Creator's Cert Transaction (txid) on the NCZ Block Explorer`;
@@ -1341,7 +1341,7 @@ console.log(extractedTxid);
 
         // Create a link for the actual txid
         const txidLink = document.createElement('a');
-        txidLink.href = `http://rpc.nanocheeze.com/tx/${signedTxid}`;
+        txidLink.href = `http://nanocheeze.com/tx/${signedTxid}`;
         txidLink.target = '_blank';
         txidLink.innerText = signedTxid;
 
